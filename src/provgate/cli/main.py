@@ -11,6 +11,7 @@ from provgate.store.crypto import generate_key
 from provgate.store.models import AssignmentPolicy, SecretKind
 from provgate.sync.engine import sync_all, sync_class
 from provgate.sync.loop import run_loop
+from provgate.sync.policy import resolve_assignments
 
 from .wiring import open_repo, real_gs_login, real_prov, utc_now_iso
 
@@ -52,6 +53,50 @@ def class_add(
     typer.echo(f"added class {label!r}")
 
 
+@class_app.command("edit")
+def class_edit(
+    label: str = typer.Argument(...),
+    gradescope_course: str = typer.Option(None, help="New Gradescope course id."),
+    gradescope_email: str = typer.Option(None, help="New Gradescope staff email."),
+    provenance_base_url: str = typer.Option(None, help="New Provenance API base URL."),
+    provenance_semester: str = typer.Option(None, help="New Provenance semester id."),
+    assignments: str = typer.Option(
+        None, help="New assignment scope: all | include:1,2 | exclude:3"
+    ),
+    enabled: bool = typer.Option(
+        None, "--enable/--disable", help="Enable or disable the class (default: unchanged)."
+    ),
+    rotate_gs_password: bool = typer.Option(
+        False, "--rotate-gs-password", help="Prompt for a new Gradescope password."
+    ),
+    rotate_token: bool = typer.Option(
+        False, "--rotate-token", help="Prompt for a new Provenance API token."
+    ),
+) -> None:
+    """Edit a class's config. Secrets are rotated via --rotate-* flags, never passed as flags."""
+    repo = open_repo(load_settings())
+    cfg = repo.get_class(label)
+    if cfg is None:
+        raise typer.BadParameter(f"no class named {label!r}")
+    policy = AssignmentPolicy.parse(assignments) if assignments is not None else None
+    repo.update_class(
+        label,
+        gradescope_course_id=gradescope_course,
+        gradescope_email=gradescope_email,
+        provenance_base_url=provenance_base_url,
+        provenance_semester_id=provenance_semester,
+        assignment_policy=policy,
+        enabled=enabled,
+    )
+    if rotate_gs_password:
+        gs_pw = typer.prompt("New Gradescope password", hide_input=True)
+        repo.set_secret(cfg.id, SecretKind.GRADESCOPE_PASSWORD, gs_pw)
+    if rotate_token:
+        token = typer.prompt("New Provenance API token", hide_input=True)
+        repo.set_secret(cfg.id, SecretKind.PROVENANCE_TOKEN, token)
+    typer.echo(f"updated class {label!r}")
+
+
 @class_app.command("list")
 def class_list() -> None:
     repo = open_repo(load_settings())
@@ -66,6 +111,50 @@ def class_list() -> None:
 def class_remove(label: str) -> None:
     open_repo(load_settings()).remove_class(label)
     typer.echo(f"removed {label!r}")
+
+
+@app.command()
+def doctor(
+    label: str = typer.Option(..., "--class", help="Class to check."),
+) -> None:
+    """Verify a class's Gradescope + Provenance credentials without syncing anything."""
+    settings = load_settings()
+    repo = open_repo(settings)
+    cfg = repo.get_class(label)
+    if cfg is None:
+        raise typer.BadParameter(f"no class named {label!r}")
+
+    ok = True
+
+    try:
+        gs_pw = repo.get_secret(cfg.id, SecretKind.GRADESCOPE_PASSWORD)
+        client = real_gs_login(settings.http_timeout_s)(cfg.gradescope_email, gs_pw)
+        try:
+            assignments = client.list_assignments(cfg.gradescope_course_id)
+            in_scope = resolve_assignments(cfg.assignment_policy, [a.id for a in assignments])
+        finally:
+            client.close()
+    except Exception as e:  # noqa: BLE001 - report as a doctor check, never leak the password
+        ok = False
+        typer.echo(f"Gradescope: FAIL ({e})")
+    else:
+        typer.echo(f"Gradescope: ok ({len(assignments)} assignment(s), {len(in_scope)} in scope)")
+
+    try:
+        token = repo.get_secret(cfg.id, SecretKind.PROVENANCE_TOKEN)
+        verified = real_prov(settings).verify_token(cfg.provenance_base_url, token)
+    except Exception as e:  # noqa: BLE001 - report as a doctor check, never leak the token
+        ok = False
+        typer.echo(f"Provenance: FAIL ({e})")
+    else:
+        if verified:
+            typer.echo("Provenance: ok (token valid)")
+        else:
+            ok = False
+            typer.echo("Provenance: FAIL (token rejected)")
+
+    if not ok:
+        raise typer.Exit(code=1)
 
 
 @app.command()

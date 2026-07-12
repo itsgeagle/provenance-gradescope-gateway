@@ -71,6 +71,34 @@ def test_poll_returns_failed_status() -> None:
 
 
 @respx.mock
+def test_verify_token_true_on_200() -> None:
+    route = respx.get(f"{BASE}/me").mock(
+        return_value=httpx.Response(200, json={"email": "a@b.edu"})
+    )
+    assert make_client().verify_token(BASE, "tok") is True
+    assert route.calls.last.request.headers["authorization"] == "Bearer tok"
+
+
+@respx.mock
+def test_verify_token_false_on_401() -> None:
+    respx.get(f"{BASE}/me").mock(return_value=httpx.Response(401))
+    assert make_client().verify_token(BASE, "tok") is False
+
+
+@respx.mock
+def test_verify_token_false_on_403() -> None:
+    respx.get(f"{BASE}/me").mock(return_value=httpx.Response(403))
+    assert make_client().verify_token(BASE, "tok") is False
+
+
+@respx.mock
+def test_verify_token_raises_on_other_error() -> None:
+    respx.get(f"{BASE}/me").mock(return_value=httpx.Response(500))
+    with pytest.raises(ProvenanceError):
+        make_client().verify_token(BASE, "tok")
+
+
+@respx.mock
 def test_ingest_non_json_body_raises_provenance_error() -> None:
     respx.post(f"{BASE}/semesters/sem-1/ingest:gradescope").mock(
         return_value=httpx.Response(

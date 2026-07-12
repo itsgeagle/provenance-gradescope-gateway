@@ -73,6 +73,43 @@ class Repository:
         sql += " ORDER BY label"
         return [_row_to_class(r) for r in self._conn.execute(sql)]
 
+    def update_class(
+        self,
+        label: str,
+        *,
+        gradescope_course_id: str | None = None,
+        gradescope_email: str | None = None,
+        provenance_base_url: str | None = None,
+        provenance_semester_id: str | None = None,
+        assignment_policy: AssignmentPolicy | None = None,
+        enabled: bool | None = None,
+    ) -> ClassConfig:
+        fields: list[tuple[str, object]] = []
+        if gradescope_course_id is not None:
+            fields.append(("gradescope_course_id", gradescope_course_id))
+        if gradescope_email is not None:
+            fields.append(("gradescope_email", gradescope_email))
+        if provenance_base_url is not None:
+            fields.append(("provenance_base_url", provenance_base_url))
+        if provenance_semester_id is not None:
+            fields.append(("provenance_semester_id", provenance_semester_id))
+        if assignment_policy is not None:
+            fields.append(("assignment_policy", assignment_policy.serialize()))
+        if enabled is not None:
+            fields.append(("enabled", int(enabled)))
+        if fields:
+            set_clause = ", ".join(f"{name} = ?" for name, _ in fields)
+            values = [v for _, v in fields]
+            self._conn.execute(
+                f"UPDATE classes SET {set_clause} WHERE label = ?",
+                (*values, label),
+            )
+            self._conn.commit()
+        got = self.get_class(label)
+        if got is None:
+            raise KeyError(label)
+        return got
+
     def set_enabled(self, label: str, enabled: bool) -> None:
         self._conn.execute("UPDATE classes SET enabled = ? WHERE label = ?", (int(enabled), label))
         self._conn.commit()

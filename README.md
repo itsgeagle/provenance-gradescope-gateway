@@ -66,11 +66,12 @@ Secrets are prompted (or read from stdin/env) — never passed as command-line f
 uv run provgate class add \
   --label "cs61a-fa26" \
   --gradescope-course 180852 \
+  --gradescope-email staff@example.edu \
   --provenance-base-url https://provenance.example.edu/api/v1 \
   --provenance-semester <semester-uuid> \
   --assignments all                       # or: --assignments include:872677,872690
                                           #     or: --assignments exclude:900001
-# → prompts: Gradescope email, Gradescope password, Provenance API token
+# → prompts: Gradescope password, Provenance API token
 ```
 
 Assignment scope per class:
@@ -87,8 +88,10 @@ Manage classes with `provgate class list`, `provgate class edit <label>`, `provg
 
 ```bash
 uv run provgate doctor --class cs61a-fa26
-# checks: Gradescope login works, course is visible, in-scope assignments resolve,
-#         Provenance token is valid and write-scoped for the semester.
+# checks: Gradescope login works and the course's assignments are visible (reports
+#         how many exist and how many are in scope under the class's --assignments
+#         policy), and the Provenance API token authenticates against the configured
+#         base URL. Prints a pass/fail line for each and exits non-zero on any failure.
 ```
 
 ## Run a sync

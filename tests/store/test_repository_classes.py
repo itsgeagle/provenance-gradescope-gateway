@@ -99,3 +99,47 @@ def test_get_missing_secret_raises() -> None:
     )
     with pytest.raises(KeyError):
         repo.get_secret(c.id, SecretKind.PROVENANCE_TOKEN)
+
+
+def test_update_class_changes_only_given_fields() -> None:
+    repo = make_repo()
+    repo.add_class(
+        label="a",
+        gradescope_course_id="1",
+        gradescope_email="e@example.edu",
+        provenance_base_url="u",
+        provenance_semester_id="s",
+        assignment_policy=AssignmentPolicy(PolicyKind.ALL),
+    )
+    updated = repo.update_class(
+        "a",
+        gradescope_course_id="2",
+        assignment_policy=AssignmentPolicy(PolicyKind.INCLUDE, ("100", "200")),
+    )
+    assert updated.gradescope_course_id == "2"
+    assert updated.assignment_policy == AssignmentPolicy(PolicyKind.INCLUDE, ("100", "200"))
+    # everything else is untouched
+    assert updated.gradescope_email == "e@example.edu"
+    assert updated.provenance_base_url == "u"
+    assert updated.provenance_semester_id == "s"
+    assert updated.enabled is True
+
+
+def test_update_class_with_no_fields_is_a_noop() -> None:
+    repo = make_repo()
+    c = repo.add_class(
+        label="a",
+        gradescope_course_id="1",
+        gradescope_email="e",
+        provenance_base_url="u",
+        provenance_semester_id="s",
+        assignment_policy=AssignmentPolicy(PolicyKind.ALL),
+    )
+    updated = repo.update_class("a")
+    assert updated == c
+
+
+def test_update_missing_class_raises_key_error() -> None:
+    repo = make_repo()
+    with pytest.raises(KeyError):
+        repo.update_class("nope", gradescope_course_id="1")

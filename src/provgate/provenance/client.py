@@ -78,6 +78,18 @@ class ProvenanceClient:
             raise ProvenanceError("ingest response missing job_id")
         return JobHandle(job_id=str(job_id))
 
+    def verify_token(self, base_url: str, token: str) -> bool:
+        url = f"{base_url}/me"
+        try:
+            resp = self._http.get(url, headers=self._auth(token))
+        except httpx.HTTPError as e:
+            raise ProvenanceError(f"token verification failed: {e}") from e
+        if resp.status_code == 200:
+            return True
+        if resp.status_code in (401, 403):
+            return False
+        raise ProvenanceError(f"token verification returned {resp.status_code}")
+
     def poll_job(self, base_url: str, token: str, semester_id: str, job_id: str) -> JobStatus:
         url = f"{base_url}/semesters/{semester_id}/ingest/jobs/{job_id}"
         deadline = self._monotonic() + self._poll_timeout_s
