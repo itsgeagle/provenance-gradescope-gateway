@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 600" role="img" aria-label="provgate architecture: it pulls Gradescope exports, prunes them to new submissions, and forwards them to the Provenance ingest API">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#18181b"/>
+    </marker>
+    <marker id="aho" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#EA580C"/>
+    </marker>
+    <style>
+      .t  { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .hd { font-weight: 700; fill: #18181b; }
+      .bd { font-weight: 500; fill: #3f3f46; }
+      .mut{ font-weight: 500; fill: #71717a; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #EA580C; font-weight: 600; }
+      .lbl { font-weight: 600; fill: #52525b; }
+    </style>
+  </defs>
+
+  <!-- ===== Gradescope panel ===== -->
+  <rect x="40" y="150" width="250" height="210" rx="16" fill="#ffffff" stroke="#e4e4e7" stroke-width="1.5"/>
+  <text x="64" y="188" class="t hd" font-size="20">Gradescope</text>
+  <text x="64" y="214" class="t mut" font-size="13">undocumented staff API</text>
+  <line x1="64" y1="230" x2="266" y2="230" stroke="#f4f4f5" stroke-width="1.5"/>
+  <text x="64" y="256" class="t bd" font-size="13.5">Staff login, one session / class</text>
+  <text x="64" y="282" class="t bd" font-size="13.5">Course assignments</text>
+  <text x="64" y="308" class="t bd" font-size="13.5">Bulk export ZIP</text>
+  <text x="64" y="332" class="t mono" font-size="12.5">export/without_evaluations</text>
+
+  <!-- ===== provgate panel (hero) ===== -->
+  <rect x="360" y="40" width="360" height="520" rx="18" fill="#fafafa" stroke="#e4e4e7" stroke-width="1.5"/>
+  <rect x="360" y="40" width="6" height="520" rx="3" fill="#EA580C"/>
+  <text x="392" y="86" class="t hd" font-size="24">provgate</text>
+  <text x="392" y="110" class="t mut" font-size="13.5">one hourly pass services every class</text>
+
+  <!-- steps -->
+  <g class="t">
+    <!-- step 1 -->
+    <circle cx="404" cy="150" r="13" fill="#18181b"/><text x="404" y="155" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+    <text x="430" y="155" class="bd" font-size="14.5">Log in per class</text>
+    <!-- step 2 -->
+    <circle cx="404" cy="196" r="13" fill="#18181b"/><text x="404" y="201" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
+    <text x="430" y="201" class="bd" font-size="14.5">List in-scope assignments</text>
+    <!-- step 3 -->
+    <circle cx="404" cy="242" r="13" fill="#18181b"/><text x="404" y="247" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">3</text>
+    <text x="430" y="247" class="bd" font-size="14.5">Download bulk export ZIP</text>
+    <!-- step 4 (highlighted) -->
+    <circle cx="404" cy="288" r="13" fill="#EA580C"/><text x="404" y="293" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">4</text>
+    <text x="430" y="288" class="hd" font-size="14.5">Prune &#8594; new submissions only</text>
+    <text x="430" y="307" class="mut" font-size="12">metadata copied verbatim, byte-for-byte</text>
+    <!-- step 5 -->
+    <circle cx="404" cy="344" r="13" fill="#18181b"/><text x="404" y="349" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">5</text>
+    <text x="430" y="349" class="bd" font-size="14.5">POST pruned ZIP to ingest</text>
+    <!-- step 6 -->
+    <circle cx="404" cy="390" r="13" fill="#18181b"/><text x="404" y="395" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">6</text>
+    <text x="430" y="395" class="bd" font-size="14.5">Poll job &#8594; terminal state</text>
+    <!-- step 7 -->
+    <circle cx="404" cy="436" r="13" fill="#18181b"/><text x="404" y="441" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">7</text>
+    <text x="430" y="441" class="bd" font-size="14.5">Advance watermark on success</text>
+  </g>
+
+  <!-- store -->
+  <rect x="392" y="474" width="296" height="66" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1.5"/>
+  <text x="412" y="502" class="t hd" font-size="13.5">SQLite store &#183; encrypted at rest</text>
+  <text x="412" y="524" class="t mut" font-size="12.5">classes &#183; secrets &#183; watermarks &#183; run log</text>
+
+  <!-- ===== Provenance panel ===== -->
+  <rect x="790" y="150" width="250" height="210" rx="16" fill="#ffffff" stroke="#e4e4e7" stroke-width="1.5"/>
+  <text x="814" y="188" class="t hd" font-size="20">Provenance</text>
+  <text x="814" y="214" class="t mut" font-size="13">public HTTP API</text>
+  <line x1="814" y1="230" x2="1016" y2="230" stroke="#f4f4f5" stroke-width="1.5"/>
+  <text x="814" y="256" class="t mono" font-size="12">POST ingest:gradescope</text>
+  <text x="814" y="282" class="t bd" font-size="13.5">parse &#183; dedup by hash</text>
+  <text x="814" y="308" class="t bd" font-size="13.5">roster &#183; analyze</text>
+  <text x="814" y="332" class="t mono" font-size="12">GET ingest/jobs/{id}</text>
+
+  <!-- ===== arrows ===== -->
+  <!-- Gradescope -> provgate -->
+  <line x1="292" y1="230" x2="352" y2="230" stroke="#18181b" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="322" y="220" text-anchor="middle" class="t lbl" font-size="11.5">export</text>
+  <!-- provgate -> Provenance (POST) -->
+  <line x1="728" y1="212" x2="782" y2="212" stroke="#EA580C" stroke-width="2.2" marker-end="url(#aho)"/>
+  <text x="755" y="202" text-anchor="middle" class="t lbl" font-size="11.5" fill="#EA580C">POST</text>
+  <!-- Provenance -> provgate (poll) -->
+  <line x1="782" y1="300" x2="728" y2="300" stroke="#18181b" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="755" y="290" text-anchor="middle" class="t lbl" font-size="11.5">status</text>
+
+  <!-- caption -->
+  <text x="540" y="586" text-anchor="middle" class="t mut" font-size="12.5">The watermark is an optimization; Provenance&#8217;s content-hash dedup is the correctness mechanism.</text>
+</svg>

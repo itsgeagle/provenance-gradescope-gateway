@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 160" role="img" aria-label="provgate">
+  <g transform="translate(22,33) scale(0.95)">
+    <rect x="18" y="20" width="46" height="46" rx="16" fill="none" stroke="#fafafa" stroke-width="9"/>
+    <line x1="4" y1="43" x2="102" y2="43" stroke="#F97316" stroke-width="9" stroke-linecap="round"/>
+    <polyline points="82,24 104,43 82,62" fill="none" stroke="#F97316" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="18" y1="34" x2="18" y2="52" stroke="#fafafa" stroke-width="9"/>
+  </g>
+  <text x="152" y="86" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="54" font-weight="700" fill="#fafafa" letter-spacing="-1.5">provgate</text>
+  <text x="155" y="118" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" font-weight="500" fill="#a1a1aa">Gradescope&#160;&#8594;&#160;Provenance&#160;submission&#160;sync</text>
+</svg>
