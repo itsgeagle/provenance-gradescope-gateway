@@ -4,7 +4,7 @@ A small Python service that syncs newly-submitted student work from **Gradescope
 
 Students record their work with the Provenance recorder and upload the resulting bundle to Gradescope as their submission. `provgate` runs hourly, pulls each configured assignment's new submissions out of Gradescope, and forwards them to Provenance's ingest API — so course staff see provenance analysis without anyone manually downloading and re-uploading exports.
 
-> **Status:** pre-implementation. This README documents the intended design and interface. See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design spec.
+> **Status:** implemented. CLI (`keygen`, `class add|edit|list|remove`, `doctor`, `sync`, `runs`), incremental sync engine, and Docker image are in place with a passing test suite. The Gradescope client's login/export selectors are pinned to synthetic fixtures and should be validated against the live site before production use (run `provgate doctor`). See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design spec.
 
 ---
 
@@ -66,11 +66,12 @@ Secrets are prompted (or read from stdin/env) — never passed as command-line f
 uv run provgate class add \
   --label "cs61a-fa26" \
   --gradescope-course 180852 \
+  --gradescope-email staff@example.edu \
   --provenance-base-url https://provenance.example.edu/api/v1 \
   --provenance-semester <semester-uuid> \
   --assignments all                       # or: --assignments include:872677,872690
                                           #     or: --assignments exclude:900001
-# → prompts: Gradescope email, Gradescope password, Provenance API token
+# → prompts: Gradescope password, Provenance API token
 ```
 
 Assignment scope per class:
@@ -87,8 +88,10 @@ Manage classes with `provgate class list`, `provgate class edit <label>`, `provg
 
 ```bash
 uv run provgate doctor --class cs61a-fa26
-# checks: Gradescope login works, course is visible, in-scope assignments resolve,
-#         Provenance token is valid and write-scoped for the semester.
+# checks: Gradescope login works and the course's assignments are visible (reports
+#         how many exist and how many are in scope under the class's --assignments
+#         policy), and the Provenance API token authenticates against the configured
+#         base URL. Prints a pass/fail line for each and exits non-zero on any failure.
 ```
 
 ## Run a sync
@@ -121,7 +124,7 @@ Mount a **persistent volume** for the SQLite store (`PROVGATE_DB_PATH`) so water
 **No external scheduler?** Use the built-in loop as a fallback:
 
 ```bash
-docker run -d --restart=unless-stopped ... provgate sync --all --loop --interval 1h
+docker run -d --restart=unless-stopped ... provgate sync --all --loop --interval 3600  # seconds
 ```
 
 ## Security notes
