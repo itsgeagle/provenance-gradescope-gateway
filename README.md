@@ -103,6 +103,21 @@ uv run provgate sync --all --dry-run    # compute the delta and report, but POST
 uv run provgate runs                     # recent sync history + outcomes
 ```
 
+## Notifications
+
+Set `PROVGATE_WEBHOOK_URL` to a Discord- or Slack-compatible incoming webhook URL and `provgate sync` POSTs a summary after **every** sync pass (including each iteration of `--loop`), for both `--all` and `--class` runs:
+
+```
+**provgate sync** · 2026-07-12T18:00:00Z · ✅ all healthy
+✅ cs61a — pulled 42, new 3 ingested, 39 already synced  (hw3: 2 new/20, hw4: 1 new/22)
+✅ cs188 — pulled 10, new 0 ingested, 10 already synced
+— totals: 2 classes · 52 pulled · 3 new ingested · 49 already synced · 0 classes failed
+```
+
+Failures are called out per class (`❌ ... — <error>`) and rolled into the totals line. Posting is **best-effort**: a webhook that's down, slow, or misconfigured is logged at warning level and never affects the sync itself (delta computation, ingest, or watermark advancement).
+
+`PROVGATE_WEBHOOK_TIMEOUT_S` controls the HTTP timeout for the webhook POST (default `10` seconds).
+
 ## Deploy (hourly)
 
 `provgate sync --all` is a one-shot process: it runs one pass and exits. Drive the cadence with whatever scheduler your host provides.

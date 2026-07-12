@@ -1,3 +1,7 @@
+import json
+
+import httpx
+import respx
 from typer.testing import CliRunner
 
 from provgate.cli.main import app
@@ -161,3 +165,32 @@ def test_sync_rejects_class_and_all_together(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("PROVGATE_SECRET_KEY", generate_key())
     result = runner.invoke(app, ["sync", "--class", "x", "--all"])
     assert result.exit_code != 0
+
+
+@respx.mock
+def test_sync_posts_webhook_summary_when_url_set(tmp_path, monkeypatch) -> None:
+    from provgate.store.crypto import generate_key
+
+    route = respx.post("https://hooks.example.com/wh").mock(return_value=httpx.Response(204))
+    monkeypatch.setenv("PROVGATE_DB_PATH", str(tmp_path / "p.db"))
+    monkeypatch.setenv("PROVGATE_SECRET_KEY", generate_key())
+    monkeypatch.setenv("PROVGATE_WEBHOOK_URL", "https://hooks.example.com/wh")
+
+    result = runner.invoke(app, ["sync", "--all"])
+    assert result.exit_code == 0, result.stdout
+    assert route.called
+    body = json.loads(route.calls.last.request.content)
+    assert "provgate sync" in body["content"]
+
+
+@respx.mock
+def test_sync_no_webhook_when_url_unset(tmp_path, monkeypatch) -> None:
+    from provgate.store.crypto import generate_key
+
+    route = respx.post("https://hooks.example.com/wh").mock(return_value=httpx.Response(204))
+    monkeypatch.setenv("PROVGATE_DB_PATH", str(tmp_path / "p.db"))
+    monkeypatch.setenv("PROVGATE_SECRET_KEY", generate_key())
+    # no PROVGATE_WEBHOOK_URL
+    result = runner.invoke(app, ["sync", "--all"])
+    assert result.exit_code == 0, result.stdout
+    assert not route.called

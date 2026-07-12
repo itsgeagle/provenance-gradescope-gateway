@@ -67,12 +67,14 @@ def test_success_advances_watermark_and_forwards_delta_only() -> None:
     assert len(prov.ingested) == 1
     assert [o.outcome for o in out1] == ["succeeded"]
     assert out1[0].delta_count == 2
+    assert out1[0].total_submissions == 2  # both submissions pulled from the export
     assert repo.forwarded_keys(cid, "2") == {"submission_1", "submission_2"}
 
     # second run: nothing new → skipped, no new ingest
     out2 = sync_class(repo, login, prov, repo.get_class("a"), now_iso=NOW)
     assert len(prov.ingested) == 1
     assert out2[0].outcome == "skipped"
+    assert out2[0].total_submissions == 2  # still 2 pulled, 0 new
 
 
 def test_failed_job_leaves_watermark_untouched() -> None:

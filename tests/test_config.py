@@ -42,3 +42,15 @@ def test_timeout_env_vars_omitted_keeps_defaults() -> None:
     assert s.poll_interval_s == 2.0
     assert s.poll_timeout_s == 600.0
     assert s.http_timeout_s == 60.0
+
+
+def test_webhook_settings_default_and_override() -> None:
+    base = {"PROVGATE_DB_PATH": "/tmp/x.db", "PROVGATE_SECRET_KEY": "k"}
+    s = load_settings(base)
+    assert s.webhook_url is None
+    assert s.webhook_timeout_s == 10.0
+    s2 = load_settings(
+        {**base, "PROVGATE_WEBHOOK_URL": "https://h/wh", "PROVGATE_WEBHOOK_TIMEOUT_S": "3.5"}
+    )
+    assert s2.webhook_url == "https://h/wh"
+    assert s2.webhook_timeout_s == 3.5
