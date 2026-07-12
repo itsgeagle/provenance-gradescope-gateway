@@ -7,6 +7,8 @@ import time
 import typer
 
 from provgate.config import load_settings
+from provgate.notify.render import render_summary
+from provgate.notify.webhook import post_summary
 from provgate.store.crypto import generate_key
 from provgate.store.models import AssignmentPolicy, SecretKind
 from provgate.sync.engine import sync_all, sync_class
@@ -188,6 +190,14 @@ def sync(
         for lbl, outcomes in results.items():
             for o in outcomes:
                 typer.echo(f"{lbl}\t{o.gs_assignment_id}\t{o.outcome}\tdelta={o.delta_count}")
+
+        if settings.webhook_url:
+            content = render_summary(results, now_iso=utc_now_iso(), dry_run=dry_run)
+            post_summary(
+                settings.webhook_url,
+                content,
+                timeout_s=settings.webhook_timeout_s,
+            )
 
     if loop:
         run_loop(_once, interval, sleep=time.sleep)

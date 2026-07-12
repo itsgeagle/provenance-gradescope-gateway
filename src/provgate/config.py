@@ -19,6 +19,8 @@ class Settings:
     poll_interval_s: float = 2.0
     poll_timeout_s: float = 600.0
     http_timeout_s: float = 60.0
+    webhook_url: str | None = None
+    webhook_timeout_s: float = 10.0
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -44,4 +46,6 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         poll_interval_s=_optional_float(env, "PROVGATE_POLL_INTERVAL_S", 2.0),
         poll_timeout_s=_optional_float(env, "PROVGATE_POLL_TIMEOUT_S", 600.0),
         http_timeout_s=_optional_float(env, "PROVGATE_HTTP_TIMEOUT_S", 60.0),
+        webhook_url=env.get("PROVGATE_WEBHOOK_URL") or None,
+        webhook_timeout_s=_optional_float(env, "PROVGATE_WEBHOOK_TIMEOUT_S", 10.0),
     )

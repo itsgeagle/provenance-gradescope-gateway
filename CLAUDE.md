@@ -48,6 +48,7 @@ core:        provgate/sync/       orchestration: per class → per assignment �
              ├── provgate/gradescope/   authenticated client: login, list assignments, download export
              ├── provgate/provenance/   API client: ingest:gradescope, poll job
              ├── provgate/store/        SQLite repository: classes, secrets, watermarks, run log
+             ├── provgate/notify/       pure render_summary + best-effort post_summary (webhook)
              └── provgate/config.py     settings: store path, master key, timeouts, base URLs
 ```
 
@@ -57,6 +58,7 @@ core:        provgate/sync/       orchestration: per class → per assignment �
 - **`provgate/sync/` is orchestration only.** It receives the two clients and the store via constructor/params (dependency injection) so it can be unit-tested against fakes. It contains the delta computation and ZIP pruning — the heart of the app — as **pure functions** operating on in-memory bytes, separate from any I/O.
 - **`provgate/cli/` is a thin frontend.** It parses args, prompts for secrets, and calls core. No sync logic lives here. A `web/` frontend added later must reuse `store` + `sync` unchanged.
 - Secrets (Gradescope passwords, Provenance tokens) are **encrypted at rest** in the store (Fernet; master key from `PROVGATE_SECRET_KEY`). Plaintext secrets exist only transiently in memory during a sync. There is exactly one encrypt/decrypt seam and it lives in `store`.
+- `provgate/notify/` is optional and isolated: `render.py` is a pure function of a pass's results, `webhook.py` POSTs it and swallows every exception. A dead or misconfigured webhook must never affect sync correctness — the CLI only fires the post after the pass has already completed and been reported.
 
 ## The delta / pruning invariant (the one thing that matters most)
 
@@ -152,6 +154,7 @@ provenance-gradescope-gateway/
 │   ├── gradescope/           # authenticated Gradescope client (undocumented API, quarantined)
 │   ├── provenance/           # Provenance HTTP API client
 │   ├── store/                # SQLite repository + secret encryption
+│   ├── notify/               # webhook summary: pure render + best-effort post
 │   └── config.py             # settings
 └── tests/                    # mirrors src/; fixtures for exports + fake Provenance
 ```
