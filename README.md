@@ -4,7 +4,7 @@ A small Python service that syncs newly-submitted student work from **Gradescope
 
 Students record their work with the Provenance recorder and upload the resulting bundle to Gradescope as their submission. `provgate` runs hourly, pulls each configured assignment's new submissions out of Gradescope, and forwards them to Provenance's ingest API — so course staff see provenance analysis without anyone manually downloading and re-uploading exports.
 
-> **Status:** pre-implementation. This README documents the intended design and interface. See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design spec.
+> **Status:** implemented. CLI (`keygen`, `class add|edit|list|remove`, `doctor`, `sync`, `runs`), incremental sync engine, and Docker image are in place with a passing test suite. The Gradescope client's login/export selectors are pinned to synthetic fixtures and should be validated against the live site before production use (run `provgate doctor`). See [`docs/superpowers/specs/`](docs/superpowers/specs/) for the design spec.
 
 ---
 
@@ -124,7 +124,7 @@ Mount a **persistent volume** for the SQLite store (`PROVGATE_DB_PATH`) so water
 **No external scheduler?** Use the built-in loop as a fallback:
 
 ```bash
-docker run -d --restart=unless-stopped ... provgate sync --all --loop --interval 1h
+docker run -d --restart=unless-stopped ... provgate sync --all --loop --interval 3600  # seconds
 ```
 
 ## Security notes
