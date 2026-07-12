@@ -45,6 +45,26 @@ def test_dry_run_marker() -> None:
     assert "(dry run — nothing ingested)" in out
 
 
+def test_dry_run_still_flags_failures_in_header() -> None:
+    results = {
+        "cs61a": [AssignmentOutcome("872677", "dry_run", 2, 10, None, None)],
+        "cs61b": [AssignmentOutcome("*", "error", 0, 0, None, "login rejected")],
+    }
+    out = render_summary(results, now_iso=NOW, dry_run=True)
+    assert "(dry run — nothing ingested)" in out
+    assert "❌ 1 of 2 classes failed" in out
+
+
+def test_totals_singular_for_one_failed_class() -> None:
+    results = {"cs61b": [AssignmentOutcome("*", "error", 0, 0, None, "boom")]}
+    out = render_summary(results, now_iso=NOW)
+    # Anchor on the totals-line ending specifically: the header marker also
+    # contains the literal substring "1 classes failed" (as part of "1 of 1
+    # classes failed"), so a bare "not in out" check would false-fail here.
+    assert "already synced · 1 class failed" in out
+    assert "already synced · 1 classes failed" not in out
+
+
 def test_classes_sorted_for_determinism() -> None:
     results = {
         "zeta": [_ok("1", 0, 5)],

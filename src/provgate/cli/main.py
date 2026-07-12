@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 import typer
@@ -192,12 +193,13 @@ def sync(
                 typer.echo(f"{lbl}\t{o.gs_assignment_id}\t{o.outcome}\tdelta={o.delta_count}")
 
         if settings.webhook_url:
-            content = render_summary(results, now_iso=utc_now_iso(), dry_run=dry_run)
-            post_summary(
-                settings.webhook_url,
-                content,
-                timeout_s=settings.webhook_timeout_s,
-            )
+            try:
+                content = render_summary(results, now_iso=utc_now_iso(), dry_run=dry_run)
+                post_summary(settings.webhook_url, content, timeout_s=settings.webhook_timeout_s)
+            except Exception:  # noqa: BLE001 — notify must never affect sync outcome
+                logging.getLogger("provgate.notify").warning(
+                    "failed to render/post webhook summary", exc_info=True
+                )
 
     if loop:
         run_loop(_once, interval, sleep=time.sleep)

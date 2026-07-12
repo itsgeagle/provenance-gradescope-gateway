@@ -27,6 +27,8 @@ def render_summary(
 
     if dry_run:
         marker = "(dry run — nothing ingested)"
+        if failed_classes:
+            marker += f" · ❌ {failed_classes} of {total_classes} classes failed"
     elif total_classes == 0:
         marker = "✅ no classes configured"
     elif failed_classes:
@@ -62,9 +64,10 @@ def render_summary(
                 line += f"  ({breakdown})"
         lines.append(line)
 
+    fail_word = "class" if failed_classes == 1 else "classes"
     lines.append(
         f"— totals: {total_classes} classes · {tot_pulled} pulled · "
         f"{tot_new} new ingested · {tot_already} already synced · "
-        f"{failed_classes} classes failed"
+        f"{failed_classes} {fail_word} failed"
     )
     return "\n".join(lines)
