@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import time
+
 import typer
 
 from provgate.config import load_settings
 from provgate.store.crypto import generate_key
 from provgate.store.models import AssignmentPolicy, SecretKind
 from provgate.sync.engine import sync_all, sync_class
+from provgate.sync.loop import run_loop
 
 from .wiring import open_repo, real_gs_login, real_prov, utc_now_iso
 
@@ -69,21 +72,32 @@ def class_remove(label: str) -> None:
 def sync(
     label: str = typer.Option(None, "--class", help="Sync one class (default: all enabled)."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Compute the delta but POST nothing."),
+    loop: bool = typer.Option(False, "--loop", help="Repeat forever on an interval."),
+    interval: float = typer.Option(3600.0, "--interval", help="Loop interval in seconds."),
 ) -> None:
     settings = load_settings()
     repo = open_repo(settings)
     prov = real_prov(settings)
     login = real_gs_login(settings.http_timeout_s)
-    if label:
-        cfg = repo.get_class(label)
-        if cfg is None:
-            raise typer.BadParameter(f"no class named {label!r}")
-        results = {label: sync_class(repo, login, prov, cfg, now_iso=utc_now_iso, dry_run=dry_run)}
+
+    def _once() -> None:
+        if label:
+            cfg = repo.get_class(label)
+            if cfg is None:
+                raise typer.BadParameter(f"no class named {label!r}")
+            results = {
+                label: sync_class(repo, login, prov, cfg, now_iso=utc_now_iso, dry_run=dry_run)
+            }
+        else:
+            results = sync_all(repo, login, prov, now_iso=utc_now_iso, dry_run=dry_run)
+        for lbl, outcomes in results.items():
+            for o in outcomes:
+                typer.echo(f"{lbl}\t{o.gs_assignment_id}\t{o.outcome}\tdelta={o.delta_count}")
+
+    if loop:
+        run_loop(_once, interval, sleep=time.sleep)
     else:
-        results = sync_all(repo, login, prov, now_iso=utc_now_iso, dry_run=dry_run)
-    for lbl, outcomes in results.items():
-        for o in outcomes:
-            typer.echo(f"{lbl}\t{o.gs_assignment_id}\t{o.outcome}\tdelta={o.delta_count}")
+        _once()
 
 
 @app.command()
