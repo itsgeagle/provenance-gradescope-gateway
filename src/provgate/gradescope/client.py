@@ -18,6 +18,8 @@ class GradescopeError(Exception):
 
 class GradescopeClient:
     def __init__(self, http: httpx.Client, *, base_url: str = "https://www.gradescope.com") -> None:
+        """Precondition: `http` must be constructed with `follow_redirects=True` — `login`
+        detects failure by inspecting the post-redirect URL."""
         self._http = http
         self._base = base_url.rstrip("/")
 
