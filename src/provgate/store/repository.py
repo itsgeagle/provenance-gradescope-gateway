@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterable
 
 from .crypto import SecretBox
-from .models import AssignmentPolicy, ClassConfig, SecretKind
+from .models import AssignmentPolicy, ClassConfig, RunRecord, SecretKind
 
 
 def _row_to_class(row: sqlite3.Row) -> ClassConfig:
@@ -98,3 +99,68 @@ class Repository:
         if row is None:
             raise KeyError(f"no {kind.value} for class {class_id}")
         return self._box.decrypt(row["ciphertext"])
+
+    # --- watermark ---------------------------------------------------------
+    def forwarded_keys(self, class_id: int, gs_assignment_id: str) -> set[str]:
+        rows = self._conn.execute(
+            "SELECT submission_key FROM forwarded_submissions "
+            "WHERE class_id = ? AND gs_assignment_id = ?",
+            (class_id, gs_assignment_id),
+        )
+        return {r["submission_key"] for r in rows}
+
+    def mark_forwarded(
+        self,
+        class_id: int,
+        gs_assignment_id: str,
+        keys: Iterable[str],
+        job_id: str,
+        now_iso: str,
+    ) -> None:
+        self._conn.executemany(
+            """
+            INSERT INTO forwarded_submissions
+                (class_id, gs_assignment_id, submission_key, provenance_job_id, forwarded_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(class_id, gs_assignment_id, submission_key) DO NOTHING
+            """,
+            [(class_id, gs_assignment_id, k, job_id, now_iso) for k in keys],
+        )
+        self._conn.commit()
+
+    # --- runs --------------------------------------------------------------
+    def record_run(self, run: RunRecord) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO runs (class_id, gs_assignment_id, outcome, delta_count,
+                              job_id, error_summary, started_at, finished_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run.class_id,
+                run.gs_assignment_id,
+                run.outcome,
+                run.delta_count,
+                run.job_id,
+                run.error_summary,
+                run.started_at,
+                run.finished_at,
+            ),
+        )
+        self._conn.commit()
+
+    def recent_runs(self, limit: int = 50) -> list[RunRecord]:
+        rows = self._conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,))
+        return [
+            RunRecord(
+                class_id=r["class_id"],
+                gs_assignment_id=r["gs_assignment_id"],
+                outcome=r["outcome"],
+                delta_count=r["delta_count"],
+                job_id=r["job_id"],
+                error_summary=r["error_summary"],
+                started_at=r["started_at"],
+                finished_at=r["finished_at"],
+            )
+            for r in rows
+        ]
