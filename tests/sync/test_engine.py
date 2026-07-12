@@ -4,7 +4,7 @@ from provgate.store.crypto import SecretBox, generate_key
 from provgate.store.db import connect
 from provgate.store.models import AssignmentPolicy, PolicyKind, SecretKind
 from provgate.store.repository import Repository
-from provgate.sync.engine import sync_class
+from provgate.sync.engine import sync_all, sync_class
 from tests.support.export_fixture import make_export
 
 NOW = lambda: "2026-07-12T00:00:00Z"  # noqa: E731
@@ -103,3 +103,37 @@ def test_login_failure_records_error_and_does_not_raise() -> None:
     out = sync_class(repo, boom, FakeProv(), repo.get_class("a"), now_iso=NOW)
     assert out[0].outcome == "error"
     assert repo.recent_runs()[0].outcome == "error"
+
+
+def test_sync_all_skips_disabled_classes_and_keys_by_label() -> None:
+    repo = Repository(connect(":memory:"), SecretBox(generate_key()))
+    a = repo.add_class(
+        label="a",
+        gradescope_course_id="1",
+        gradescope_email="e@x",
+        provenance_base_url="https://prov/api/v1",
+        provenance_semester_id="sem",
+        assignment_policy=AssignmentPolicy(PolicyKind.INCLUDE, ("2",)),
+    )
+    repo.set_secret(a.id, SecretKind.GRADESCOPE_PASSWORD, "pw")
+    repo.set_secret(a.id, SecretKind.PROVENANCE_TOKEN, "tok")
+    b = repo.add_class(
+        label="b",
+        gradescope_course_id="9",
+        gradescope_email="e@x",
+        provenance_base_url="https://prov/api/v1",
+        provenance_semester_id="sem",
+        assignment_policy=AssignmentPolicy(PolicyKind.ALL),
+        enabled=False,
+    )
+    repo.set_secret(b.id, SecretKind.GRADESCOPE_PASSWORD, "pw")
+    repo.set_secret(b.id, SecretKind.PROVENANCE_TOKEN, "tok")
+
+    export = make_export({"submission_1": {"sid": "s1", "files": {"manifest.json": b"a"}}})
+    prov = FakeProv("succeeded")
+    login = lambda email, pw: FakeGs(export)  # noqa: E731
+
+    results = sync_all(repo, login, prov, now_iso=NOW)
+
+    assert set(results.keys()) == {"a"}  # disabled class 'b' is skipped
+    assert results["a"][0].outcome == "succeeded"
