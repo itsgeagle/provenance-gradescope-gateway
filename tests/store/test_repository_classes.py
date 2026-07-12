@@ -72,6 +72,21 @@ def test_secret_roundtrip_is_encrypted_at_rest() -> None:
     assert b"pw123" not in row["ciphertext"]
 
 
+def test_set_secret_twice_upserts_to_second_value() -> None:
+    repo = make_repo()
+    c = repo.add_class(
+        label="a",
+        gradescope_course_id="1",
+        gradescope_email="e",
+        provenance_base_url="u",
+        provenance_semester_id="s",
+        assignment_policy=AssignmentPolicy(PolicyKind.ALL),
+    )
+    repo.set_secret(c.id, SecretKind.GRADESCOPE_PASSWORD, "first")
+    repo.set_secret(c.id, SecretKind.GRADESCOPE_PASSWORD, "second")
+    assert repo.get_secret(c.id, SecretKind.GRADESCOPE_PASSWORD) == "second"
+
+
 def test_get_missing_secret_raises() -> None:
     repo = make_repo()
     c = repo.add_class(

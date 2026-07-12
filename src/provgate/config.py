@@ -28,9 +28,20 @@ def _require(env: Mapping[str, str], key: str) -> str:
     return value
 
 
+def _optional_float(env: Mapping[str, str], key: str, default: float) -> float:
+    value = env.get(key)
+    if not value:
+        return default
+    return float(value)
+
+
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     env = os.environ if env is None else env
+    # Fallbacks below must track the Settings dataclass defaults.
     return Settings(
         db_path=Path(_require(env, "PROVGATE_DB_PATH")),
         secret_key=_require(env, "PROVGATE_SECRET_KEY"),
+        poll_interval_s=_optional_float(env, "PROVGATE_POLL_INTERVAL_S", 2.0),
+        poll_timeout_s=_optional_float(env, "PROVGATE_POLL_TIMEOUT_S", 600.0),
+        http_timeout_s=_optional_float(env, "PROVGATE_HTTP_TIMEOUT_S", 60.0),
     )

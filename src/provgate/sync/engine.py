@@ -106,17 +106,22 @@ def sync_class(
         _record(repo, cfg, out, started, now_iso())
         return [out]
 
-    outcomes: list[AssignmentOutcome] = []
-    for aid in in_scope:
-        try:
-            outcomes.append(
-                _sync_assignment(repo, gs, prov, cfg, token, aid, now_iso=now_iso, dry_run=dry_run)
-            )
-        except Exception as e:  # assignment-level failure: isolate from siblings
-            out = AssignmentOutcome(aid, "error", 0, None, str(e))
-            _record(repo, cfg, out, started, now_iso())
-            outcomes.append(out)
-    return outcomes
+    try:
+        outcomes: list[AssignmentOutcome] = []
+        for aid in in_scope:
+            try:
+                outcomes.append(
+                    _sync_assignment(
+                        repo, gs, prov, cfg, token, aid, now_iso=now_iso, dry_run=dry_run
+                    )
+                )
+            except Exception as e:  # assignment-level failure: isolate from siblings
+                out = AssignmentOutcome(aid, "error", 0, None, str(e))
+                _record(repo, cfg, out, started, now_iso())
+                outcomes.append(out)
+        return outcomes
+    finally:
+        gs.close()
 
 
 def sync_all(

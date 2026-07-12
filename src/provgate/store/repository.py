@@ -58,7 +58,8 @@ class Repository:
         )
         self._conn.commit()
         got = self.get_class(label)
-        assert got is not None and got.id == cur.lastrowid
+        if got is None or got.id != cur.lastrowid:
+            raise RuntimeError("insert did not persist as expected")
         return got
 
     def get_class(self, label: str) -> ClassConfig | None:

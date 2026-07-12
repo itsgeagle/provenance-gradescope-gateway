@@ -69,7 +69,11 @@ class ProvenanceClient:
             raise ProvenanceError(f"ingest request failed: {e}") from e
         if resp.status_code != 202:
             raise ProvenanceError(f"ingest returned {resp.status_code}")
-        job_id = resp.json().get("job_id")
+        try:
+            body = resp.json()
+        except ValueError as e:
+            raise ProvenanceError(f"expected JSON response, got non-JSON body: {e}") from e
+        job_id = body.get("job_id")
         if not job_id:
             raise ProvenanceError("ingest response missing job_id")
         return JobHandle(job_id=str(job_id))
@@ -84,7 +88,10 @@ class ProvenanceClient:
                 raise ProvenanceError(f"job poll failed: {e}") from e
             if resp.status_code != 200:
                 raise ProvenanceError(f"job poll returned {resp.status_code}")
-            body = resp.json()
+            try:
+                body = resp.json()
+            except ValueError as e:
+                raise ProvenanceError(f"expected JSON response, got non-JSON body: {e}") from e
             status = JobStatus(status=str(body.get("status", "")), raw=body)
             if status.is_terminal:
                 return status

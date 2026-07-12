@@ -35,6 +35,9 @@ class FakeGs:
     def download_export(self, course_id: str, assignment_id: str) -> bytes:
         return self._export
 
+    def close(self) -> None:
+        pass
+
 
 class FakeProv:
     def __init__(self, status: str = "succeeded") -> None:
@@ -137,3 +140,41 @@ def test_sync_all_skips_disabled_classes_and_keys_by_label() -> None:
 
     assert set(results.keys()) == {"a"}  # disabled class 'b' is skipped
     assert results["a"][0].outcome == "succeeded"
+
+
+def test_sync_all_isolates_class_login_failure_from_sibling_class() -> None:
+    repo = Repository(connect(":memory:"), SecretBox(generate_key()))
+    a = repo.add_class(
+        label="a",
+        gradescope_course_id="1",
+        gradescope_email="broken@x",
+        provenance_base_url="https://prov/api/v1",
+        provenance_semester_id="sem",
+        assignment_policy=AssignmentPolicy(PolicyKind.INCLUDE, ("2",)),
+    )
+    repo.set_secret(a.id, SecretKind.GRADESCOPE_PASSWORD, "pw")
+    repo.set_secret(a.id, SecretKind.PROVENANCE_TOKEN, "tok")
+    b = repo.add_class(
+        label="b",
+        gradescope_course_id="9",
+        gradescope_email="ok@x",
+        provenance_base_url="https://prov/api/v1",
+        provenance_semester_id="sem",
+        assignment_policy=AssignmentPolicy(PolicyKind.INCLUDE, ("2",)),
+    )
+    repo.set_secret(b.id, SecretKind.GRADESCOPE_PASSWORD, "pw")
+    repo.set_secret(b.id, SecretKind.PROVENANCE_TOKEN, "tok")
+
+    export = make_export({"submission_1": {"sid": "s1", "files": {"manifest.json": b"a"}}})
+    prov = FakeProv("succeeded")
+
+    def login(email: str, pw: str) -> FakeGs:
+        if email == "broken@x":
+            raise RuntimeError("gradescope down for class a")
+        return FakeGs(export)
+
+    results = sync_all(repo, login, prov, now_iso=NOW)
+
+    assert set(results.keys()) == {"a", "b"}
+    assert results["a"][0].outcome == "error"
+    assert results["b"][0].outcome == "succeeded"

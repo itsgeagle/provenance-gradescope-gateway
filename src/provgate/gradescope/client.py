@@ -65,3 +65,6 @@ class GradescopeClient:
         if resp.status_code != 200:
             raise GradescopeError(f"export returned {resp.status_code}")
         return resp.content
+
+    def close(self) -> None:
+        self._http.close()

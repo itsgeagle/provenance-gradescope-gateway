@@ -59,3 +59,23 @@ def test_poll_times_out() -> None:
     respx.get(url).mock(return_value=httpx.Response(200, json={"status": "running"}))
     with pytest.raises(ProvenanceError):
         make_client().poll_job(BASE, "tok", "sem-1", "job-9")
+
+
+@respx.mock
+def test_poll_returns_failed_status() -> None:
+    url = f"{BASE}/semesters/sem-1/ingest/jobs/job-9"
+    respx.get(url).mock(return_value=httpx.Response(200, json={"status": "failed"}))
+    status = make_client().poll_job(BASE, "tok", "sem-1", "job-9")
+    assert status.status == "failed"
+    assert status.is_success is False
+
+
+@respx.mock
+def test_ingest_non_json_body_raises_provenance_error() -> None:
+    respx.post(f"{BASE}/semesters/sem-1/ingest:gradescope").mock(
+        return_value=httpx.Response(
+            202, content=b"not json", headers={"content-type": "text/plain"}
+        )
+    )
+    with pytest.raises(ProvenanceError):
+        make_client().ingest_gradescope_export(BASE, "tok", "sem-1", b"z")

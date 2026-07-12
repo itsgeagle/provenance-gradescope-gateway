@@ -36,6 +36,8 @@ def class_add(
 ) -> None:
     """Register a class. Gradescope password + Provenance token are prompted (never flags)."""
     policy = AssignmentPolicy.parse(assignments)
+    gs_pw = typer.prompt("Gradescope password", hide_input=True)
+    token = typer.prompt("Provenance API token", hide_input=True)
     repo = open_repo(load_settings())
     cfg = repo.add_class(
         label=label,
@@ -45,8 +47,6 @@ def class_add(
         provenance_semester_id=provenance_semester,
         assignment_policy=policy,
     )
-    gs_pw = typer.prompt("Gradescope password", hide_input=True)
-    token = typer.prompt("Provenance API token", hide_input=True)
     repo.set_secret(cfg.id, SecretKind.GRADESCOPE_PASSWORD, gs_pw)
     repo.set_secret(cfg.id, SecretKind.PROVENANCE_TOKEN, token)
     typer.echo(f"added class {label!r}")
