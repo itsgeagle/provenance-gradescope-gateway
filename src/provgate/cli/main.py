@@ -71,10 +71,16 @@ def class_remove(label: str) -> None:
 @app.command()
 def sync(
     label: str = typer.Option(None, "--class", help="Sync one class (default: all enabled)."),
+    all_classes: bool = typer.Option(
+        False, "--all", help="Sync all enabled classes (the default when --class is omitted)."
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Compute the delta but POST nothing."),
     loop: bool = typer.Option(False, "--loop", help="Repeat forever on an interval."),
     interval: float = typer.Option(3600.0, "--interval", help="Loop interval in seconds."),
 ) -> None:
+    if label and all_classes:
+        raise typer.BadParameter("specify either --class or --all, not both")
+
     settings = load_settings()
     repo = open_repo(settings)
     prov = real_prov(settings)

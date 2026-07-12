@@ -43,3 +43,21 @@ def test_class_add_and_list(tmp_path, monkeypatch) -> None:
     # secret values must never be echoed
     assert "gs-password" not in add.stdout
     assert "prov-token" not in add.stdout
+
+
+def test_sync_all_flag_accepted_with_no_classes(tmp_path, monkeypatch) -> None:
+    from provgate.store.crypto import generate_key
+
+    monkeypatch.setenv("PROVGATE_DB_PATH", str(tmp_path / "p.db"))
+    monkeypatch.setenv("PROVGATE_SECRET_KEY", generate_key())
+    result = runner.invoke(app, ["sync", "--all", "--dry-run"])
+    assert result.exit_code == 0, result.stdout
+
+
+def test_sync_rejects_class_and_all_together(tmp_path, monkeypatch) -> None:
+    from provgate.store.crypto import generate_key
+
+    monkeypatch.setenv("PROVGATE_DB_PATH", str(tmp_path / "p.db"))
+    monkeypatch.setenv("PROVGATE_SECRET_KEY", generate_key())
+    result = runner.invoke(app, ["sync", "--class", "x", "--all"])
+    assert result.exit_code != 0
