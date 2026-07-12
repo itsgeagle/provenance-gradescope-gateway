@@ -16,14 +16,40 @@ left; the arrow exits in front on the right.
 
 Same tokens as Provenance; the accent brightens on dark surfaces for contrast.
 
-## Files
+The wordmark is set in the Tailwind default system-sans stack at weight 700, matching the
+Provenance wordmark.
 
-| File                          | Use                                                    |
-| ----------------------------- | ------------------------------------------------------ |
-| `provgate-mark.svg` / `-dark` | symbol only                                            |
-| `provgate-lockup.svg` / `-dark` | symbol + wordmark (README header, via `<picture>`)   |
-| `architecture.svg` / `-dark`  | system diagram (README, via `<picture>`)               |
+## Source masters (SVG)
 
-SVGs are the editable masters and are embedded directly in the README. Light/dark selection
-is handled with a `<picture>` + `prefers-color-scheme` element. The wordmark uses the
-Tailwind default system-sans stack at weight 700, matching the Provenance wordmark.
+| File                            | Use                              |
+| ------------------------------- | -------------------------------- |
+| `provgate-mark.svg` / `-dark`   | symbol only                      |
+| `provgate-lockup.svg` / `-dark` | symbol + wordmark                |
+| `architecture.svg` / `-dark`    | system diagram                   |
+
+## Exports (PNG)
+
+The README embeds the **PNGs**, not the SVGs. System fonts render per-machine, so the
+wordmark and diagram labels are rasterized for portable, predictable sizing; the SVGs stay
+the editable masters. PNGs have transparent backgrounds so they blend into GitHub's light or
+dark theme. Light/dark selection is handled with a `<picture>` + `prefers-color-scheme` element.
+
+| File                                 | Where it's wired            |
+| ------------------------------------ | --------------------------- |
+| `exports/lockup-light.png` / `-dark` | README header               |
+| `exports/architecture-light.png` / `-dark` | README "How it works" |
+| `exports/mark-light.png` / `-dark`   | icon / favicon source       |
+
+## Regenerating exports
+
+Rendered with [`rsvg-convert`](https://gitlab.gnome.org/GNOME/librsvg) (`brew install librsvg`).
+From this directory:
+
+```sh
+rsvg-convert -w 1240 provgate-lockup.svg      -o exports/lockup-light.png
+rsvg-convert -w 1240 provgate-lockup-dark.svg -o exports/lockup-dark.png
+rsvg-convert -w 1680 architecture.svg         -o exports/architecture-light.png
+rsvg-convert -w 1680 architecture-dark.svg    -o exports/architecture-dark.png
+rsvg-convert -w 256  provgate-mark.svg        -o exports/mark-light.png
+rsvg-convert -w 256  provgate-mark-dark.svg   -o exports/mark-dark.png
+```

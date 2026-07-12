@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="brand/provgate-lockup-dark.svg" />
-  <img alt="provgate — Gradescope to Provenance submission sync" src="brand/provgate-lockup.svg" width="400" />
+  <source media="(prefers-color-scheme: dark)" srcset="brand/exports/lockup-dark.png" />
+  <img alt="provgate — Gradescope to Provenance submission sync" src="brand/exports/lockup-light.png" width="420" />
 </picture>
 
 **`provgate`** syncs newly-submitted student work from **[Gradescope](https://www.gradescope.com)** into a **[Provenance](https://github.com/itsgeagle/provenance)** server on a schedule.
@@ -12,8 +12,8 @@ It is a **pure HTTP client of Provenance's public API** — it holds no Provenan
 ## How it works
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="brand/architecture-dark.svg" />
-  <img alt="Architecture: provgate pulls the Gradescope bulk export, prunes it to only new submissions (copying submission metadata verbatim), POSTs the pruned ZIP to Provenance's ingest:gradescope endpoint, polls the job to a terminal state, and advances a per-assignment watermark on success." src="brand/architecture.svg" width="840" />
+  <source media="(prefers-color-scheme: dark)" srcset="brand/exports/architecture-dark.png" />
+  <img alt="Architecture: provgate pulls the Gradescope bulk export, prunes it to only new submissions (copying submission metadata verbatim), POSTs the pruned ZIP to Provenance's ingest:gradescope endpoint, polls the job to a terminal state, and advances a per-assignment watermark on success." src="brand/exports/architecture-light.png" width="860" />
 </picture>
 
 The Gradescope bulk export (`…/assignments/{id}/export/without_evaluations`) is already in the exact shape Provenance's `ingest:gradescope` endpoint expects — a `submission_metadata.yml` plus one folder per submission — so no reformatting is needed. Each pass, `provgate` only *filters* the export down to the submissions it hasn't sent yet, copying the metadata byte-for-byte and keeping only new submission folders. Already-synced submissions simply drop out of the pruned ZIP.
