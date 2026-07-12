@@ -22,6 +22,7 @@ class AssignmentOutcome:
     gs_assignment_id: str
     outcome: str  # succeeded | partial | failed | skipped | dry_run | error
     delta_count: int
+    total_submissions: int
     job_id: str | None
     error: str | None
 
@@ -61,12 +62,12 @@ def _sync_assignment(
     delta = len(pruned.forwarded_keys)
 
     if delta == 0:
-        out = AssignmentOutcome(aid, "skipped", 0, None, None)
+        out = AssignmentOutcome(aid, "skipped", 0, pruned.total_submissions, None, None)
         _record(repo, cfg, out, started, now_iso())
         return out
 
     if dry_run:
-        out = AssignmentOutcome(aid, "dry_run", delta, None, None)
+        out = AssignmentOutcome(aid, "dry_run", delta, pruned.total_submissions, None, None)
         _record(repo, cfg, out, started, now_iso())
         return out
 
@@ -78,9 +79,18 @@ def _sync_assignment(
     )
     if status.is_success:
         repo.mark_forwarded(cfg.id, aid, pruned.forwarded_keys, handle.job_id, now_iso())
-        out = AssignmentOutcome(aid, status.status, delta, handle.job_id, None)
+        out = AssignmentOutcome(
+            aid, status.status, delta, pruned.total_submissions, handle.job_id, None
+        )
     else:
-        out = AssignmentOutcome(aid, "failed", delta, handle.job_id, f"job status {status.status}")
+        out = AssignmentOutcome(
+            aid,
+            "failed",
+            delta,
+            pruned.total_submissions,
+            handle.job_id,
+            f"job status {status.status}",
+        )
     _record(repo, cfg, out, started, now_iso())
     return out
 
@@ -102,7 +112,7 @@ def sync_class(
         all_ids = [a.id for a in gs.list_assignments(cfg.gradescope_course_id)]
         in_scope = resolve_assignments(cfg.assignment_policy, all_ids)
     except Exception as e:  # class-level failure: isolate, record, continue the pass
-        out = AssignmentOutcome("*", "error", 0, None, str(e))
+        out = AssignmentOutcome("*", "error", 0, 0, None, str(e))
         _record(repo, cfg, out, started, now_iso())
         return [out]
 
@@ -116,7 +126,7 @@ def sync_class(
                     )
                 )
             except Exception as e:  # assignment-level failure: isolate from siblings
-                out = AssignmentOutcome(aid, "error", 0, None, str(e))
+                out = AssignmentOutcome(aid, "error", 0, 0, None, str(e))
                 _record(repo, cfg, out, started, now_iso())
                 outcomes.append(out)
         return outcomes
