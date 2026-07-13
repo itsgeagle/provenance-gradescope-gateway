@@ -245,3 +245,78 @@ def test_part_retried_on_transient_failure_with_backoff() -> None:
     assert handle.job_id == "job-9"
     assert parts.call_count == 3  # two 500s, then success
     assert sleeps == [0.5, 1.0]  # exponential backoff after attempts 0 and 1
+
+
+@respx.mock
+def test_part_exhaustion_aborts_upload_and_raises() -> None:
+    payload = b"abcd"
+    respx.post(f"{BASE}/semesters/sem-1/ingest/uploads").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "upload_id": "up-1",
+                "s3_upload_id": "s3-1",
+                "chunk_size": 4,
+                "total_parts": 1,
+            },
+        )
+    )
+    respx.put(url__regex=_PARTS_RE).mock(return_value=httpx.Response(500))
+    abort = respx.delete(f"{BASE}/semesters/sem-1/ingest/uploads/up-1").mock(
+        return_value=httpx.Response(204)
+    )
+
+    with pytest.raises(ProvenanceError):
+        make_client(
+            chunk_threshold_bytes=4, chunk_size_bytes=4, part_max_attempts=2
+        ).ingest_gradescope_export(BASE, "tok", "sem-1", payload)
+
+    assert abort.called
+    assert abort.calls.last.request.url.params["s3_upload_id"] == "s3-1"
+
+
+@respx.mock
+def test_complete_failure_aborts_upload_and_raises() -> None:
+    payload = b"abcd"
+    respx.post(f"{BASE}/semesters/sem-1/ingest/uploads").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "upload_id": "up-1",
+                "s3_upload_id": "s3-1",
+                "chunk_size": 4,
+                "total_parts": 1,
+            },
+        )
+    )
+    respx.put(url__regex=_PARTS_RE).mock(return_value=httpx.Response(200, json={}))
+    respx.post(f"{BASE}/semesters/sem-1/ingest/uploads/up-1/complete").mock(
+        return_value=httpx.Response(500)
+    )
+    abort = respx.delete(f"{BASE}/semesters/sem-1/ingest/uploads/up-1").mock(
+        return_value=httpx.Response(204)
+    )
+
+    with pytest.raises(ProvenanceError):
+        make_client(chunk_threshold_bytes=4, chunk_size_bytes=4).ingest_gradescope_export(
+            BASE, "tok", "sem-1", payload
+        )
+
+    assert abort.called
+
+
+@respx.mock
+def test_create_upload_failure_raises_without_abort() -> None:
+    payload = b"abcd"
+    respx.post(f"{BASE}/semesters/sem-1/ingest/uploads").mock(return_value=httpx.Response(500))
+    abort = respx.delete(url__regex=rf"{re.escape(BASE)}/semesters/sem-1/ingest/uploads/.*").mock(
+        return_value=httpx.Response(204)
+    )
+
+    with pytest.raises(ProvenanceError):
+        make_client(chunk_threshold_bytes=4, chunk_size_bytes=4).ingest_gradescope_export(
+            BASE, "tok", "sem-1", payload
+        )
+
+    # No upload was created, so nothing to abort.
+    assert not abort.called

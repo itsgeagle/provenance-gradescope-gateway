@@ -103,22 +103,28 @@ class ProvenanceClient:
         self, base_url: str, token: str, semester_id: str, zip_bytes: bytes
     ) -> JobHandle:
         upload = self._create_upload(base_url, token, semester_id, len(zip_bytes))
-        chunk_size = upload.chunk_size
-        for part_number in range(1, upload.total_parts + 1):
-            start = (part_number - 1) * chunk_size
-            end = min(start + chunk_size, len(zip_bytes))
-            self._put_part(
-                base_url,
-                token,
-                semester_id,
-                upload.upload_id,
-                upload.s3_upload_id,
-                part_number,
-                zip_bytes[start:end],
+        try:
+            chunk_size = upload.chunk_size
+            for part_number in range(1, upload.total_parts + 1):
+                start = (part_number - 1) * chunk_size
+                end = min(start + chunk_size, len(zip_bytes))
+                self._put_part(
+                    base_url,
+                    token,
+                    semester_id,
+                    upload.upload_id,
+                    upload.s3_upload_id,
+                    part_number,
+                    zip_bytes[start:end],
+                )
+            return self._complete_upload(
+                base_url, token, semester_id, upload.upload_id, upload.s3_upload_id
             )
-        return self._complete_upload(
-            base_url, token, semester_id, upload.upload_id, upload.s3_upload_id
-        )
+        except ProvenanceError:
+            # Best-effort cleanup so no orphaned S3 multipart parts linger. The
+            # abort is cleanup, not correctness: it must not mask the original error.
+            self._abort_upload(base_url, token, semester_id, upload.upload_id, upload.s3_upload_id)
+            raise
 
     def _create_upload(
         self, base_url: str, token: str, semester_id: str, total_bytes: int
@@ -200,6 +206,15 @@ class ProvenanceClient:
         if not job_id:
             raise ProvenanceError("complete response missing job_id")
         return JobHandle(job_id=str(job_id))
+
+    def _abort_upload(
+        self, base_url: str, token: str, semester_id: str, upload_id: str, s3_upload_id: str
+    ) -> None:
+        url = f"{base_url}/semesters/{semester_id}/ingest/uploads/{upload_id}"
+        try:
+            self._http.delete(url, headers=self._auth(token), params={"s3_upload_id": s3_upload_id})
+        except httpx.HTTPError:
+            pass  # cleanup, not correctness — never let abort failure mask the real error
 
     def verify_token(self, base_url: str, token: str) -> bool:
         url = f"{base_url}/me"
