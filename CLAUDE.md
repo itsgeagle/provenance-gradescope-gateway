@@ -52,7 +52,7 @@ core:        provgate/sync/       orchestration: per class → per assignment �
              └── provgate/config.py     settings: store path, master key, timeouts, base URLs
 ```
 
-- **`provgate/gradescope/` is the only module that knows Gradescope exists.** All undocumented-API fragility is quarantined here: login, session/CSRF handling, assignment listing, and export download. It exposes a small typed interface (`list_assignments`, `download_export`) to the rest of the app. Nothing outside this package imports `gradescopeapi` or constructs a Gradescope URL. When Gradescope breaks, exactly one package changes.
+- **`provgate/gradescope/` is the only module that knows Gradescope exists.** All undocumented-API fragility is quarantined here: login, session/CSRF handling, assignment listing, and export download. It exposes a small typed interface (`list_assignments`, `download_export`) to the rest of the app. The client is hand-rolled on `httpx` (we do **not** depend on `gradescopeapi`); nothing outside this package constructs a Gradescope URL or touches its session/HTML. When Gradescope breaks, exactly one package changes.
 - **`provgate/provenance/` is the only module that knows Provenance's HTTP shape.** It exposes `ingest_gradescope_export(...) -> JobHandle` and `poll_job(...) -> JobStatus`. It never reaches into Provenance internals; it only calls the three public behaviors above.
 - **`provgate/store/` is pure persistence.** It owns the SQLite connection and is the only place SQL is written. It exposes a repository interface (classes, secrets, watermarks, runs). No business logic, no HTTP, no Gradescope/Provenance types leaking in.
 - **`provgate/sync/` is orchestration only.** It receives the two clients and the store via constructor/params (dependency injection) so it can be unit-tested against fakes. It contains the delta computation and ZIP pruning — the heart of the app — as **pure functions** operating on in-memory bytes, separate from any I/O.
@@ -74,7 +74,7 @@ Pruning logic is a pure function `prune_export(zip_bytes, already_forwarded: set
 
 ## Code style
 
-- Python 3.11+. `mypy --strict` clean — no `Any` except at the `gradescopeapi`/HTML-scraping boundary, with a comment explaining why.
+- Python 3.11+. `mypy --strict` clean — no `Any` except at the HTML-scraping boundary, with a comment explaining why.
 - `ruff` for lint **and** format (no separate Black). CI fails on lint or format drift.
 - Prefer pure functions over classes when there's no state to own. The delta/prune logic is pure functions. `store` is a class because it owns a connection; the Gradescope client is a class because it owns a session.
 - Errors are values when expected — return a result/`enum` outcome or a typed exception hierarchy the caller handles. Never swallow an exception silently. One class's sync failure is logged and isolated; it never aborts the pass for other classes.
@@ -161,7 +161,7 @@ provenance-gradescope-gateway/
 
 ## Future / parked ideas
 
-- **Upstream a submission-export path to `gradescopeapi`.** The library supports login, listing, and upload but *not* downloading submissions or the bulk export — which is why we implement export download ourselves in `provgate/gradescope/`. Once that code is proven here, propose a PR upstream so others can reuse it. Parked, not scheduled.
+- **Upstream our bulk-export download to `gradescopeapi`.** We hand-roll the whole Gradescope client (login, listing, async bulk-export download) on `httpx` and do not depend on `gradescopeapi`. The library covers login/listing/upload but *not* the bulk-export download; once our download flow is proven here, proposing a PR upstream (or adopting the library for login/listing to shrink our own scraping-maintenance surface) is an option. Parked, not scheduled.
 
 ## When in doubt
 
