@@ -33,6 +33,8 @@ def real_prov(settings: Settings) -> ProvenanceClient:
         httpx.Client(timeout=settings.http_timeout_s),
         poll_interval_s=settings.poll_interval_s,
         poll_timeout_s=settings.poll_timeout_s,
+        chunk_threshold_bytes=settings.ingest_chunk_threshold_bytes,
+        chunk_size_bytes=settings.ingest_chunk_size_bytes,
     )
 
 
