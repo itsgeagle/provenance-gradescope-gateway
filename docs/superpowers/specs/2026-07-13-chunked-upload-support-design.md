@@ -181,3 +181,8 @@ branch is transparent above the client seam. `mypy --strict` clean with no new
 - The generic multi-file `POST …/ingest` route — only `ingest:gradescope` is in
   scope.
 - Streaming the pruned ZIP from disk — it is already fully in memory upstream.
+- **Gradescope-side large/async download handling** — the async "preparing"
+  redirect/poll and the whole-export-in-memory + pure-`prune_export` model are a
+  distinct concern in `gradescope/` (not `provenance/`) with no shared code. Tracked
+  as a separate follow-up spec. The Provenance proxy cap addressed here is on the
+  upload path only; Gradescope downloads do not traverse it.
