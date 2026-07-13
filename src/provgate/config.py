@@ -23,6 +23,8 @@ class Settings:
     webhook_timeout_s: float = 10.0
     ingest_chunk_threshold_bytes: int = 16 * 1024 * 1024
     ingest_chunk_size_bytes: int = 16 * 1024 * 1024
+    gs_export_poll_interval_s: float = 5.0
+    gs_export_poll_timeout_s: float = 600.0
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -63,4 +65,6 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         ingest_chunk_size_bytes=_optional_int(
             env, "PROVGATE_INGEST_CHUNK_SIZE_BYTES", 16 * 1024 * 1024
         ),
+        gs_export_poll_interval_s=_optional_float(env, "PROVGATE_GS_EXPORT_POLL_INTERVAL_S", 5.0),
+        gs_export_poll_timeout_s=_optional_float(env, "PROVGATE_GS_EXPORT_POLL_TIMEOUT_S", 600.0),
     )

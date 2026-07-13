@@ -70,3 +70,19 @@ def test_chunk_settings_default_and_override() -> None:
     )
     assert s2.ingest_chunk_threshold_bytes == 1048576
     assert s2.ingest_chunk_size_bytes == 524288
+
+
+def test_gs_export_poll_settings_default_and_override() -> None:
+    base = {"PROVGATE_DB_PATH": "/tmp/x.db", "PROVGATE_SECRET_KEY": "k"}
+    s = load_settings(base)
+    assert s.gs_export_poll_interval_s == 5.0
+    assert s.gs_export_poll_timeout_s == 600.0
+    s2 = load_settings(
+        {
+            **base,
+            "PROVGATE_GS_EXPORT_POLL_INTERVAL_S": "2",
+            "PROVGATE_GS_EXPORT_POLL_TIMEOUT_S": "120",
+        }
+    )
+    assert s2.gs_export_poll_interval_s == 2.0
+    assert s2.gs_export_poll_timeout_s == 120.0
