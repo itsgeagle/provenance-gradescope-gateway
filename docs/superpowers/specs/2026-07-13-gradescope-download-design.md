@@ -1,8 +1,13 @@
-# Gradescope submission-export download (real async flow, streaming)
+# Gradescope submission-export download + assignment listing (real flows)
 
 **Date:** 2026-07-13
 **Status:** Approved design, ready for implementation planning
-**Scope:** `src/provgate/gradescope/` (client), `src/provgate/sync/prune.py`, `src/provgate/sync/engine.py` + `ports.py`, two new `config.py` settings. No Provenance changes.
+**Scope:** `src/provgate/gradescope/` (client + `parse.py`), `src/provgate/sync/prune.py`, `src/provgate/sync/engine.py` + `ports.py`, two new `config.py` settings. No Provenance changes.
+
+Both the download **and** the assignment-listing paths in the current client are
+broken against live Gradescope for the same root cause — Gradescope now renders
+these instructor pages client-side (React), so the server HTML the current code
+scrapes doesn't contain what it expects. Both were verified live during design.
 
 ## Problem
 
@@ -20,6 +25,14 @@ Secondary: the current pipeline is fully in-memory (`download_export -> bytes`,
 `prune_export(bytes)`, upload). A large export would spike RAM / hit the
 multipart ~2 GiB in-memory ceiling. We fix that here by streaming the large part
 (the full export) through disk while keeping only the small delta in memory.
+
+Also broken: **`list_assignments`** (`parse_assignments`) scrapes
+`<a href="/courses/.../assignments/{id}">` anchors from the course page, but the
+instructor assignments page is a **React table** (`data-react-class="AssignmentsTable"`)
+with no such anchors — it returns an empty list live (verified: 0 assignments for
+a course that has 15). Since the engine resolves which assignments to sync from
+`list_assignments`, this breaks the sync end-to-end regardless of the download fix,
+so it is fixed here too.
 
 ## Observed contract (from the live spike)
 
@@ -81,6 +94,25 @@ tests are deterministic. Interval/timeout come from config (below).
 `GradescopeError` is raised on: missing csrf meta, non-200 create, `failed`/other
 terminal status, poll timeout, non-200 download. Each is isolated per-assignment
 by the engine.
+
+### Assignment listing (`gradescope/parse.py`, `gradescope/client.py`)
+
+`list_assignments` keeps its signature (`course_id -> list[Assignment]`) and its
+`GET /courses/{cid}/assignments`. Only `parse_assignments` changes: instead of
+anchor scraping, extract the React component's props.
+
+Observed shape: the page contains
+`<div data-react-class="AssignmentsTable" data-react-props="{HTML-escaped JSON}">`.
+The (unescaped) JSON has `table_data`: a list of rows, each with `id`
+(`"assignment_8255863"` — strip the `assignment_` prefix for the numeric id),
+`title` (`"Lab 0"`), and `url` (`/courses/{cid}/assignments/{id}`).
+
+`parse_assignments` becomes: locate the `AssignmentsTable` `data-react-props`,
+`html.unescape` + `json.loads` it, and map each `table_data` row to
+`Assignment(id=<row.id without the "assignment_" prefix>, title=<row.title>)`.
+Validate defensively (missing component / bad JSON / absent `table_data` → a clear
+`GradescopeError`, not a silent empty list — an empty list would look like "no
+assignments" and silently sync nothing). `Assignment` (`id`, `title`) is unchanged.
 
 ### Streaming / memory model
 
@@ -175,6 +207,11 @@ Default suite (`respx`, no network):
 - **Failure paths:** `status=="failed"` → `GradescopeError`; poll never completing
   within timeout → `GradescopeError` (deterministic via injected clock);
   non-200 create/download → `GradescopeError`.
+- **Assignment listing:** `parse_assignments` against a captured `AssignmentsTable`
+  React-props fixture returns the right `(id, title)` pairs with the `assignment_`
+  prefix stripped; a page missing the component or with malformed props raises
+  `GradescopeError` (not an empty list). Update the existing anchor-based
+  `parse_assignments` fixtures/tests to the React-props shape.
 - **Prune path-source:** existing fixture-based prune tests extended to pass a
   temp-file `Path` (not just bytes) and assert identical `PrunedExport`. Existing
   byte-based tests stay green (back-compat).
@@ -200,6 +237,6 @@ remains the ground-truth capture and the way to re-verify if Gradescope changes.
   call.
 - **Streaming the delta upload from disk** — the delta is small; it stays in
   memory and uses the existing chunked uploader. Revisit only if deltas grow.
-- **`list_assignments` verification.** The assignment-listing scrape is still
-  provisional (unverified selectors) and out of scope here; this spec assumes a
-  valid `course_id`/`assignment_id`. Its own live verification is a follow-up.
+- **`gradescopeapi` adoption** — the client stays hand-rolled on `httpx`; we do not
+  take the library as a dependency (it does not cover the bulk-export download, and
+  it would split the authenticated session the create/poll/download flow needs).
