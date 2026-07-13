@@ -132,6 +132,8 @@ Mount a **persistent volume** for the SQLite store (`PROVGATE_DB_PATH`) so water
 
 **Large submissions.** When a sync pass forwards more new submissions than fit under your Provenance reverse proxy's request-body cap (nginx `client_max_body_size`, commonly ~20 MiB), `provgate` automatically switches to Provenance's resumable chunked upload. Tune it with `PROVGATE_INGEST_CHUNK_THRESHOLD_BYTES` (exports at or above this size use the chunked path; default `16777216` = 16 MiB) and `PROVGATE_INGEST_CHUNK_SIZE_BYTES` (size of each uploaded chunk; default `16777216`, which the server clamps to the 5 MiB–512 MiB range). Keep the chunk size under your proxy's body cap.
 
+**Slow exports.** Gradescope generates a submission export asynchronously; `provgate` polls until it is ready, then downloads it. `PROVGATE_GS_EXPORT_POLL_INTERVAL_S` sets the delay between status polls (default `5` seconds) and `PROVGATE_GS_EXPORT_POLL_TIMEOUT_S` the maximum wait for a large export to finish generating (default `600` seconds). Raise the timeout for very large assignments.
+
 **No external scheduler?** Use the built-in loop as a fallback:
 
 ```bash
