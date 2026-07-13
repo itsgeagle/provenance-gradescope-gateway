@@ -21,6 +21,8 @@ class Settings:
     http_timeout_s: float = 60.0
     webhook_url: str | None = None
     webhook_timeout_s: float = 10.0
+    ingest_chunk_threshold_bytes: int = 16 * 1024 * 1024
+    ingest_chunk_size_bytes: int = 16 * 1024 * 1024
 
 
 def _require(env: Mapping[str, str], key: str) -> str:
@@ -37,6 +39,13 @@ def _optional_float(env: Mapping[str, str], key: str, default: float) -> float:
     return float(value)
 
 
+def _optional_int(env: Mapping[str, str], key: str, default: int) -> int:
+    value = env.get(key)
+    if not value:
+        return default
+    return int(value)
+
+
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     env = os.environ if env is None else env
     # Fallbacks below must track the Settings dataclass defaults.
@@ -48,4 +57,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         http_timeout_s=_optional_float(env, "PROVGATE_HTTP_TIMEOUT_S", 60.0),
         webhook_url=env.get("PROVGATE_WEBHOOK_URL") or None,
         webhook_timeout_s=_optional_float(env, "PROVGATE_WEBHOOK_TIMEOUT_S", 10.0),
+        ingest_chunk_threshold_bytes=_optional_int(
+            env, "PROVGATE_INGEST_CHUNK_THRESHOLD_BYTES", 16 * 1024 * 1024
+        ),
+        ingest_chunk_size_bytes=_optional_int(
+            env, "PROVGATE_INGEST_CHUNK_SIZE_BYTES", 16 * 1024 * 1024
+        ),
     )
