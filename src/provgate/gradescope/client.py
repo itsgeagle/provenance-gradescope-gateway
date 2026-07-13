@@ -118,7 +118,10 @@ class GradescopeClient:
             raise GradescopeError(f"export create returned non-JSON: {e}") from e
         if not gfid:
             raise GradescopeError("export create response missing generated_file_id")
-        return int(gfid)
+        try:
+            return int(gfid)
+        except (ValueError, TypeError) as e:
+            raise GradescopeError(f"export create returned invalid generated_file_id: {e!r}") from e
 
     def _poll_generated_file(self, course_id: str, generated_file_id: int) -> str:
         url = f"{self._base}/courses/{course_id}/generated_files/{generated_file_id}.json"
@@ -155,7 +158,12 @@ class GradescopeClient:
                     raise GradescopeError(f"export download returned {resp.status_code}")
                 for chunk in resp.iter_bytes():
                     fh.write(chunk)
-        except (httpx.HTTPError, GradescopeError):
+        except httpx.HTTPError as e:
+            path.unlink(missing_ok=True)
+            raise GradescopeError(f"export download failed: {e}") from e
+        except BaseException:
+            # Any other failure (OSError from the write, the non-200 GradescopeError
+            # above, KeyboardInterrupt): never leak the temp file.
             path.unlink(missing_ok=True)
             raise
         return path

@@ -1,3 +1,4 @@
+import tempfile
 from pathlib import Path
 
 import httpx
@@ -131,3 +132,57 @@ def test_list_assignments_wraps_parse_error_as_gradescope_error() -> None:
     )
     with pytest.raises(GradescopeError):
         make_client().list_assignments("1")
+
+
+@respx.mock
+def test_create_export_non_200_raises() -> None:
+    _mock_assignment_page()
+    respx.post(f"{GS}/courses/1/assignments/2/export").mock(return_value=httpx.Response(500))
+    with pytest.raises(GradescopeError):
+        with make_client().download_export("1", "2"):
+            pass
+
+
+@respx.mock
+def test_create_export_non_numeric_id_raises() -> None:
+    _mock_assignment_page()
+    respx.post(f"{GS}/courses/1/assignments/2/export").mock(
+        return_value=httpx.Response(200, json={"generated_file_id": "not-a-number"})
+    )
+    with pytest.raises(GradescopeError):
+        with make_client().download_export("1", "2"):
+            pass
+
+
+@respx.mock
+def test_download_non_200_raises_and_leaves_no_temp_file(tmp_path: object) -> None:
+    _mock_assignment_page()
+    respx.post(f"{GS}/courses/1/assignments/2/export").mock(
+        return_value=httpx.Response(200, json={"generated_file_id": 42})
+    )
+    respx.get(f"{GS}/courses/1/generated_files/42.json").mock(
+        return_value=httpx.Response(200, json={"progress": 1.0, "status": "completed", "url": S3})
+    )
+    respx.get(url=S3).mock(return_value=httpx.Response(404))
+    before = set(Path(tempfile.gettempdir()).glob("provgate-export-*.zip"))
+    with pytest.raises(GradescopeError):
+        with make_client().download_export("1", "2"):
+            pass
+    after = set(Path(tempfile.gettempdir()).glob("provgate-export-*.zip"))
+    assert before == after  # no leaked temp file
+
+
+@respx.mock
+def test_download_reassembles_multiple_chunks() -> None:
+    _mock_assignment_page()
+    respx.post(f"{GS}/courses/1/assignments/2/export").mock(
+        return_value=httpx.Response(200, json={"generated_file_id": 42})
+    )
+    respx.get(f"{GS}/courses/1/generated_files/42.json").mock(
+        return_value=httpx.Response(200, json={"progress": 1.0, "status": "completed", "url": S3})
+    )
+    respx.get(url=S3).mock(
+        return_value=httpx.Response(200, stream=httpx.ByteStream(b"aaaa" + b"bbbb"))
+    )
+    with make_client().download_export("1", "2") as path:
+        assert path.read_bytes() == b"aaaabbbb"
