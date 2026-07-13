@@ -201,3 +201,47 @@ def test_uses_server_returned_chunk_size_not_requested() -> None:
     assert parts.call_count == 2
     first = min(parts.calls, key=lambda c: int(c.request.url.path.rsplit("/", 1)[1]))
     assert len(first.request.content) == 5
+
+
+@respx.mock
+def test_part_retried_on_transient_failure_with_backoff() -> None:
+    payload = b"abcd"  # one 4-byte part
+    respx.post(f"{BASE}/semesters/sem-1/ingest/uploads").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "upload_id": "up-1",
+                "s3_upload_id": "s3-1",
+                "chunk_size": 4,
+                "total_parts": 1,
+            },
+        )
+    )
+    parts = respx.put(url__regex=_PARTS_RE).mock(
+        side_effect=[
+            httpx.Response(500),
+            httpx.Response(500),
+            httpx.Response(200, json={}),
+        ]
+    )
+    respx.post(f"{BASE}/semesters/sem-1/ingest/uploads/up-1/complete").mock(
+        return_value=httpx.Response(202, json={"job_id": "job-9"})
+    )
+
+    sleeps: list[float] = []
+    client = ProvenanceClient(
+        httpx.Client(),
+        poll_interval_s=0.0,
+        poll_timeout_s=5.0,
+        sleep=sleeps.append,
+        monotonic=lambda: 0.0,
+        chunk_threshold_bytes=4,
+        chunk_size_bytes=4,
+        part_max_attempts=4,
+    )
+
+    handle = client.ingest_gradescope_export(BASE, "tok", "sem-1", payload)
+
+    assert handle.job_id == "job-9"
+    assert parts.call_count == 3  # two 500s, then success
+    assert sleeps == [0.5, 1.0]  # exponential backoff after attempts 0 and 1
