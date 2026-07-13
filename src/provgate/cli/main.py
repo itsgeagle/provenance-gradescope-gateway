@@ -131,7 +131,7 @@ def doctor(
 
     try:
         gs_pw = repo.get_secret(cfg.id, SecretKind.GRADESCOPE_PASSWORD)
-        client = real_gs_login(settings.http_timeout_s)(cfg.gradescope_email, gs_pw)
+        client = real_gs_login(settings)(cfg.gradescope_email, gs_pw)
         try:
             assignments = client.list_assignments(cfg.gradescope_course_id)
             in_scope = resolve_assignments(cfg.assignment_policy, [a.id for a in assignments])
@@ -176,7 +176,7 @@ def sync(
     settings = load_settings()
     repo = open_repo(settings)
     prov = real_prov(settings)
-    login = real_gs_login(settings.http_timeout_s)
+    login = real_gs_login(settings)
 
     def _once() -> None:
         if label:

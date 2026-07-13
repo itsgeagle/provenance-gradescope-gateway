@@ -19,9 +19,13 @@ def open_repo(settings: Settings) -> Repository:
     return Repository(connect(settings.db_path), SecretBox(settings.secret_key))
 
 
-def real_gs_login(http_timeout_s: float) -> GradescopeLogin:
+def real_gs_login(settings: Settings) -> GradescopeLogin:
     def login(email: str, password: str) -> GradescopeClient:
-        client = GradescopeClient(httpx.Client(follow_redirects=True, timeout=http_timeout_s))
+        client = GradescopeClient(
+            httpx.Client(follow_redirects=True, timeout=settings.http_timeout_s),
+            poll_interval_s=settings.gs_export_poll_interval_s,
+            poll_timeout_s=settings.gs_export_poll_timeout_s,
+        )
         client.login(email, password)
         return client
 

@@ -4,10 +4,11 @@ from pathlib import Path
 import httpx
 import respx
 
-from provgate.cli.wiring import real_prov
+from provgate.cli.wiring import real_gs_login, real_prov
 from provgate.config import Settings
 
 BASE = "https://prov.example.edu/api/v1"
+GS = "https://www.gradescope.com"
 
 
 def _settings() -> Settings:
@@ -46,3 +47,27 @@ def test_real_prov_forwards_chunk_settings() -> None:
 
     assert handle.job_id == "job-1"
     assert parts.call_count == 2  # chunked path was taken because threshold=4 flowed through
+
+
+@respx.mock
+def test_real_gs_login_builds_client_with_poll_settings() -> None:
+    # Mock the login round-trip so the factory's login() succeeds without network.
+    respx.get(f"{GS}/login").mock(
+        return_value=httpx.Response(200, text='<input name="authenticity_token" value="T" />')
+    )
+    respx.post(f"{GS}/login").mock(
+        return_value=httpx.Response(302, headers={"location": "/account"})
+    )
+    respx.get(f"{GS}/account").mock(return_value=httpx.Response(200, text="ok"))
+
+    settings = Settings(
+        db_path=Path("/tmp/x.db"),
+        secret_key="k",
+        gs_export_poll_interval_s=1.5,
+        gs_export_poll_timeout_s=90.0,
+    )
+    client = real_gs_login(settings)("staff@x.edu", "pw")
+    # The constructed client carries the poll settings from config (white-box wiring check).
+    assert client._poll_interval_s == 1.5
+    assert client._poll_timeout_s == 90.0
+    client.close()
