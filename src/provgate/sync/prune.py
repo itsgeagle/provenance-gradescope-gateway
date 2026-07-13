@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import zipfile
 from dataclasses import dataclass
+from pathlib import Path
 
 METADATA_FILENAME = "submission_metadata.yml"
 
@@ -49,9 +50,10 @@ def _key_for(name: str, export_prefix: str) -> str | None:
     return rest.split("/", 1)[0]
 
 
-def prune_export(zip_bytes: bytes, already_forwarded: set[str]) -> PrunedExport:
+def prune_export(source: Path | bytes, already_forwarded: set[str]) -> PrunedExport:
+    src: Path | io.BytesIO = io.BytesIO(source) if isinstance(source, bytes) else source
     try:
-        zin = zipfile.ZipFile(io.BytesIO(zip_bytes))
+        zin = zipfile.ZipFile(src)
     except zipfile.BadZipFile as e:
         raise NotAnExportError("not a valid ZIP") from e
 

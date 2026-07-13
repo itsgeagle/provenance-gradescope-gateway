@@ -1,5 +1,6 @@
 import io
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -61,3 +62,23 @@ def test_not_an_export_raises() -> None:
 def test_garbage_bytes_raise() -> None:
     with pytest.raises(NotAnExportError):
         prune_export(b"not a zip", set())
+
+
+def test_prune_accepts_a_file_path_source(tmp_path: Path) -> None:
+    export = make_export(
+        {
+            "submission_1": {"sid": "s1", "files": {"manifest.json": b"a"}},
+            "submission_2": {"sid": "s2", "files": {"manifest.json": b"b"}},
+        }
+    )
+    path = tmp_path / "export.zip"
+    path.write_bytes(export)
+
+    pruned = prune_export(path, already_forwarded={"submission_1"})
+
+    assert pruned.forwarded_keys == frozenset({"submission_2"})
+    assert pruned.total_submissions == 2
+    names = _names(pruned.zip_bytes)
+    assert "assignment_export/submission_metadata.yml" in names
+    assert "assignment_export/submission_2/manifest.json" in names
+    assert not any("submission_1/" in n for n in names)
