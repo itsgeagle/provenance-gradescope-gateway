@@ -1,3 +1,9 @@
+import contextlib
+import os
+import tempfile
+from collections.abc import Iterator
+from pathlib import Path
+
 from provgate.gradescope.parse import Assignment
 from provgate.provenance.client import JobHandle, JobStatus
 from provgate.store.crypto import SecretBox, generate_key
@@ -32,8 +38,16 @@ class FakeGs:
     def list_assignments(self, course_id: str) -> list[Assignment]:
         return [Assignment(id="2", title="HW"), Assignment(id="3", title="Other")]
 
-    def download_export(self, course_id: str, assignment_id: str) -> bytes:
-        return self._export
+    @contextlib.contextmanager
+    def download_export(self, course_id: str, assignment_id: str) -> Iterator[Path]:
+        fd, name = tempfile.mkstemp(suffix=".zip")
+        path = Path(name)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(self._export)
+            yield path
+        finally:
+            path.unlink(missing_ok=True)
 
     def close(self) -> None:
         pass

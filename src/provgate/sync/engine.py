@@ -56,9 +56,9 @@ def _sync_assignment(
     dry_run: bool,
 ) -> AssignmentOutcome:
     started = now_iso()
-    export = gs.download_export(cfg.gradescope_course_id, aid)
     already = repo.forwarded_keys(cfg.id, aid)
-    pruned = prune_export(export, already)
+    with gs.download_export(cfg.gradescope_course_id, aid) as export_path:
+        pruned = prune_export(export_path, already)
     delta = len(pruned.forwarded_keys)
 
     if delta == 0:

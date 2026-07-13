@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import AbstractContextManager
+from pathlib import Path
 from typing import Protocol
 
 from provgate.gradescope.parse import Assignment
@@ -11,7 +13,9 @@ from provgate.provenance.client import JobHandle, JobStatus
 
 class GradescopePort(Protocol):
     def list_assignments(self, course_id: str) -> list[Assignment]: ...
-    def download_export(self, course_id: str, assignment_id: str) -> bytes: ...
+    def download_export(
+        self, course_id: str, assignment_id: str
+    ) -> AbstractContextManager[Path]: ...
     def close(self) -> None: ...
 
 
