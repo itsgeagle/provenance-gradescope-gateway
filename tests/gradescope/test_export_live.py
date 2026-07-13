@@ -130,6 +130,49 @@ def _find_generated_file_urls(html: str) -> list[str]:
     return sorted(cands)
 
 
+def _extract_export_form_fields(html: str) -> list[str]:
+    """Dump the bulk-export modal's form controls — these reveal the create-POST
+    params, i.e. whether there is a 'without evaluations' option (CLAUDE.md: raw
+    submissions only, never grades). Empty result => modal is JS-rendered and the
+    params aren't in server HTML (would need a browser to see)."""
+    anchors = [m.start() for m in re.finditer(r"bulk[-_]export", html)]
+    if not anchors:
+        return []
+    window = html[anchors[0] : anchors[0] + 8000]
+    fields: list[str] = []
+    for m in re.finditer(r"<form\b[^>]*>", window):
+        action = re.search(r'action="([^"]*)"', m.group(0))
+        method = re.search(r'method="([^"]*)"', m.group(0))
+        if action:
+            fields.append(
+                f"form action={action.group(1)!r} method={method.group(1) if method else None!r}"
+            )
+    for m in re.finditer(r"<input\b[^>]*>", window):
+        tag = m.group(0)
+        name = re.search(r'name="([^"]*)"', tag)
+        typ = re.search(r'type="([^"]*)"', tag)
+        val = re.search(r'value="([^"]*)"', tag)
+        if name or typ:
+            name_str = name.group(1) if name else None
+            # Redact values of auth/csrf token fields at the source (their string
+            # form here wouldn't be caught by _scrub's HTML-shaped patterns).
+            sensitive = name_str is not None and re.search(r"token|csrf|auth", name_str, re.I)
+            val_str = "<redacted>" if sensitive else (val.group(1) if val else None)
+            fields.append(
+                f"input name={name_str!r} type={(typ.group(1) if typ else None)!r} "
+                f"value={val_str!r} checked={'checked' in tag}"
+            )
+    for m in re.finditer(r'<select\b[^>]*name="([^"]*)"', window):
+        fields.append(f"select name={m.group(1)!r}")
+    for m in re.finditer(r'<option\b[^>]*value="([^"]*)"[^>]*>([^<]*)</option>', window):
+        fields.append(f"option value={m.group(1)!r} label={m.group(2).strip()!r}")
+    for m in re.finditer(r"<label\b[^>]*>([^<]+)</label>", window):
+        txt = m.group(1).strip()
+        if txt:
+            fields.append(f"label {txt!r}")
+    return fields
+
+
 def _has_csrf_meta(html: str) -> bool:
     """A POST to the create endpoint needs the `csrf-token` meta value as an
     X-CSRF-Token header. Report only presence (never the value)."""
@@ -500,10 +543,21 @@ def test_capture_export_behavior() -> None:
                 transcript.append(
                     "    • (no export/download URL found in page HTML — likely JS-constructed)"
                 )
-            # Full gon menu once (from the review_grades page) — helps spot the var
-            # that actually holds the status/poll path when the guesses miss.
+            # Full gon menu + bulk-export modal form fields once (review_grades page):
+            # the gon menu helps spot the status/poll path var; the form fields reveal
+            # the create-POST params (the 'without evaluations' question).
             if is200 and label == "review_grades":
                 transcript.append(f"    • all gon.* names: {_all_gon_names(page.text)}")
+                form_fields = _extract_export_form_fields(page.text)
+                if form_fields:
+                    transcript.append("    • bulk-export modal form fields:")
+                    for f in form_fields:
+                        transcript.append(f"        - {_scrub(f)}")
+                else:
+                    transcript.append(
+                        "    • bulk-export modal: no server-side form fields found "
+                        "(likely JS-rendered — create params not in HTML)"
+                    )
             if not create_path and "create_bulk_export_path" in gon_paths:
                 create_path = gon_paths["create_bulk_export_path"]
                 discovery_html = page.text
