@@ -1,0 +1,33 @@
+[Unit]
+Description=provgate — one Gradescope→Provenance sync pass
+Documentation=https://github.com/itsgeagle/provenance-gradescope-gateway
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# One pass, then exit. The timer (provgate.timer) drives the cadence; this unit
+# is not meant to be enabled on its own.
+Type=oneshot
+
+# Location of the repo checkout. Edit to match your deployment.
+WorkingDirectory=%h/provenance-gradescope-gateway
+
+# Persistent store for watermarks + encrypted secrets. StateDirectory creates and
+# owns %S/provgate (~/.local/state/provgate for a user unit, /var/lib/provgate for a
+# system unit) so nothing needs to mkdir it by hand.
+StateDirectory=provgate
+Environment=PROVGATE_DB_PATH=%S/provgate/provgate.db
+
+# The master encryption key (and any other secrets) live here, NOT in this unit and
+# NOT in git. Copy provgate.env.example, fill it in, and chmod 600 it.
+EnvironmentFile=%h/.config/provgate/provgate.env
+
+ExecStart=%h/.local/bin/uv run provgate sync --all
+
+# A large async Gradescope export plus multi-class polling can legitimately take a
+# while; give a pass room before systemd calls it a failed start.
+TimeoutStartSec=1800
+
+# Minimal hardening that is safe for both user and system units. For a dedicated
+# system service you can add ProtectSystem=strict, PrivateTmp=true, etc.
+NoNewPrivileges=true

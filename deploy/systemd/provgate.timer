@@ -1,0 +1,20 @@
+[Unit]
+Description=Run provgate sync on a schedule
+Documentation=https://github.com/itsgeagle/provenance-gradescope-gateway
+
+[Timer]
+# Fire at the top of every hour. Change to suit (e.g. OnCalendar=*:0/30 for every
+# 30 minutes, or a fixed daily time).
+OnCalendar=hourly
+
+# If the machine was off/asleep at the scheduled time, run once as soon as it is back
+# rather than skipping the slot.
+Persistent=true
+
+# Small jitter so a fleet of timers does not all fire at exactly :00.
+RandomizedDelaySec=120
+
+Unit=provgate.service
+
+[Install]
+WantedBy=timers.target
