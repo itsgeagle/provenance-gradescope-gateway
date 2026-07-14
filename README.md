@@ -149,6 +149,14 @@ docker run -d --restart=unless-stopped ... provgate sync --all --loop --interval
 - Only `export/without_evaluations` is fetched — raw student submissions, no grades or rubric data.
 - Fetched exports are streamed to Provenance and not retained after the run.
 
+## License
+
+`provgate` is licensed under the Apache License, Version 2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). The deployed service also incorporates third-party open-source Python packages; see [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for the full list of components, versions, and licenses.
+
+## Trademarks
+
+"Gradescope" is a trademark of Turnitin, LLC. `provgate` is an independent, unofficial project and is not affiliated with, endorsed by, or sponsored by Gradescope or Turnitin, LLC. It integrates with Gradescope only through undocumented, unofficial endpoints observed on the Gradescope website (see [`CLAUDE.md`](CLAUDE.md)); this integration may break without notice if Gradescope changes its site, and Gradescope/Turnitin has not reviewed or approved this project.
+
 ## Contributing
 
 Contributor conventions and architecture rules live in [`CLAUDE.md`](CLAUDE.md); the design spec is in [`docs/superpowers/specs/`](docs/superpowers/specs/). The project deliberately quarantines all undocumented-Gradescope-API fragility in a single module (`provgate/gradescope/`) and treats the Provenance HTTP contract as fixed — read `CLAUDE.md` before making changes.
