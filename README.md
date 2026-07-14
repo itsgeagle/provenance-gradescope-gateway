@@ -18,12 +18,12 @@ It is a **pure HTTP client of Provenance's public API** — it holds no Provenan
 
 The Gradescope bulk export (`…/assignments/{id}/export/without_evaluations`) is already in the exact shape Provenance's `ingest:gradescope` endpoint expects — a `submission_metadata.yml` plus one folder per submission — so no reformatting is needed. Each pass, `provgate` only *filters* the export down to the submissions it hasn't sent yet, copying the metadata byte-for-byte and keeping only new submission folders. Already-synced submissions simply drop out of the pruned ZIP.
 
-## Why it's correct
+## Sync semantics
 
-- **Incremental, but not fragile.** A per-assignment **watermark** tracks what's been forwarded, so `provgate` doesn't re-process the whole cohort every run.
-- **Dedup is Provenance's job.** The watermark is only an optimization. Provenance deduplicates submissions by content hash before any heavy processing, so re-sending an unchanged bundle is cheap and safe — no duplicates are ever created, even if a run repeats.
-- **Watermark advances only on success.** It moves forward only after the Provenance job reaches a terminal `succeeded`/`partial` state. A crash mid-run leaves it untouched, so the next run retries.
-- **Cross-class isolation.** Each class is an independent try/except island with its own run record. One class's Gradescope outage or bad credential never aborts the pass for the others.
+- **Watermark.** A per-assignment watermark tracks what's been forwarded, so a run doesn't re-process the whole cohort.
+- **Deduplication.** The watermark is only an optimization. Provenance deduplicates submissions by content hash before any heavy processing, so re-sending an unchanged bundle creates no duplicate, even if a run repeats.
+- **Advances only on success.** The watermark moves forward only after the Provenance job reaches a terminal `succeeded`/`partial` state. A crash mid-run leaves it untouched, so the next run retries.
+- **Per-class isolation.** Each class runs in its own try/except with its own run record. One class's Gradescope outage or bad credential doesn't abort the pass for the others.
 
 ## Requirements
 
@@ -78,9 +78,9 @@ Assignment scope per class:
 
 Manage classes with `provgate class list`, `provgate class edit <label>`, and `provgate class remove <label>`.
 
-## Verify before trusting
+## Verify a class
 
-The Gradescope side speaks an undocumented, changing API. Before relying on a class in production, confirm its credentials and that `provgate` can actually see the course:
+The Gradescope side speaks an undocumented, changing API. Before relying on a class in production, confirm its credentials and that `provgate` can see the course:
 
 ```bash
 uv run provgate doctor --class cs61a-fa26
@@ -151,7 +151,7 @@ docker run -d --restart=unless-stopped ... provgate sync --all --loop --interval
 
 ## License
 
-`provgate` is licensed under the Apache License, Version 2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). The deployed service also incorporates third-party open-source Python packages; see [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for the full list of components, versions, and licenses.
+`provgate` is licensed under the Apache License, Version 2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). The deployed service also incorporates third-party open-source Python packages; see [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) for the full list of components, versions, and licenses.
 
 ## Trademarks
 
