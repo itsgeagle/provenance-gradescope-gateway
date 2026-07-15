@@ -1,6 +1,6 @@
 [Unit]
 Description=provgate — one Gradescope→Provenance sync pass
-Documentation=https://github.com/itsgeagle/provenance-gradescope-gateway
+Documentation=https://github.com/ProvenanceTools/provenance-gradescope-gateway
 Wants=network-online.target
 After=network-online.target
 

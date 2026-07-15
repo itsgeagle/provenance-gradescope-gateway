@@ -1,6 +1,6 @@
 # provgate brand assets
 
-`provgate` is a companion tool to [Provenance](https://github.com/itsgeagle/provenance), so
+`provgate` is a companion tool to [Provenance](https://github.com/ProvenanceTools/provenance), so
 its mark deliberately borrows Provenance's visual language: the same rounded-square
 **chain link** (chain-of-custody) and the same ink + orange palette. The difference is the
 **submission arrow** threading through the link — `provgate` is the *gateway* that passes new

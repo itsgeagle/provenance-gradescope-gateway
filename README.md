@@ -3,7 +3,7 @@
   <img alt="provgate — Gradescope to Provenance submission sync" src="brand/exports/lockup-light.png" width="420" />
 </picture>
 
-**`provgate`** syncs newly-submitted student work from **[Gradescope](https://www.gradescope.com)** into a **[Provenance](https://github.com/itsgeagle/provenance)** server on a schedule.
+**`provgate`** syncs newly-submitted student work from **[Gradescope](https://www.gradescope.com)** into a **[Provenance](https://github.com/ProvenanceTools/provenance)** server on a schedule.
 
 Students record their work with the Provenance recorder and upload the resulting bundle to Gradescope as their submission. `provgate` runs on a schedule, pulls each configured assignment's new submissions out of Gradescope, and forwards them to Provenance's ingest API — so course staff get provenance analysis without anyone manually downloading and re-uploading exports. It is a **multi-class** manager: register any number of classes, each with its own Gradescope login and target Provenance semester, and one pass services all of them.
 
@@ -35,7 +35,7 @@ The Gradescope bulk export (`…/assignments/{id}/export/without_evaluations`) i
 ## Install
 
 ```bash
-git clone https://github.com/itsgeagle/provenance-gradescope-gateway
+git clone https://github.com/ProvenanceTools/provenance-gradescope-gateway
 cd provenance-gradescope-gateway
 uv sync
 uv run provgate --help

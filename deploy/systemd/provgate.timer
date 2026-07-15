@@ -1,6 +1,6 @@
 [Unit]
 Description=Run provgate sync on a schedule
-Documentation=https://github.com/itsgeagle/provenance-gradescope-gateway
+Documentation=https://github.com/ProvenanceTools/provenance-gradescope-gateway
 
 [Timer]
 # Fire at the top of every hour. Change to suit (e.g. OnCalendar=*:0/30 for every

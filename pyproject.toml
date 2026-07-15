@@ -12,6 +12,11 @@ dependencies = [
     "typer>=0.12",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ProvenanceTools/provenance-gradescope-gateway"
+Repository = "https://github.com/ProvenanceTools/provenance-gradescope-gateway"
+Issues = "https://github.com/ProvenanceTools/provenance-gradescope-gateway/issues"
+
 [project.scripts]
 provgate = "provgate.cli.main:app"
 
