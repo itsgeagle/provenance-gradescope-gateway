@@ -4,7 +4,7 @@ Project conventions and standing instructions for Claude Code working in this re
 
 ## What this is
 
-**provenance-gradescope-gateway** (`provgate`): a standalone Python service that syncs newly-submitted student work from Gradescope into a [Provenance](https://github.com/) server on a schedule. It is a **multi-class sync manager** — you register N classes, each with its own Gradescope login + course and a target Provenance semester, and one sync pass services all of them.
+**provenance-gradescope-gateway** (`provgate`): a standalone Python service that syncs newly-submitted student work from Gradescope into a [Provenance](https://github.com/ProvenanceTools/provenance) server on a schedule. It is a **multi-class sync manager** — you register N classes, each with its own Gradescope login + course and a target Provenance semester, and one sync pass services all of them.
 
 It is a **pure HTTP client of Provenance's public API**. It holds no Provenance code, database, or storage; it authenticates with a Provenance API token exactly like any third-party tool. The only "hard" surface is the *Gradescope* side: an undocumented, changing endpoint set accessed with a staff credential.
 
